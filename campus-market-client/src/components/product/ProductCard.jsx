@@ -28,10 +28,13 @@ export default function ProductCard({ product, isSaved, onWishlistToggle }) {
               src={product.images[0]}
               alt={product.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextSibling?.style && (e.target.nextSibling.style.display = 'flex');
+              }}
             />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-4xl text-gray-300">📦</div>
-          )}
+          ) : null}
+          <div className="w-full h-full flex items-center justify-center text-4xl text-gray-300" style={{ display: product.images?.[0] ? 'none' : 'flex' }}>📦</div>
           {/* Sold overlay */}
           {product.status === 'sold' && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
