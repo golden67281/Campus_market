@@ -243,4 +243,25 @@ router.put('/reset-password', async (req, res, next) => {
   }
 });
 
+// 6. DB Status Diagnostics (Temporary)
+router.get('/db-status', async (req, res) => {
+  try {
+    const hasUri = !!process.env.MONGODB_URI;
+    const users = await readTable('users');
+    const products = await readTable('products');
+    
+    res.status(200).json({
+      hasUri,
+      userCount: users.length,
+      productCount: products.length,
+      users: users.map(u => ({ 
+        username: u.username, 
+        mobile: u.mobile ? u.mobile.replace(/(\d{3})\d{4}(\d{3})/, '$1****$2') : '' 
+      })),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
