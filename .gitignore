@@ -1,0 +1,24 @@
+# Dependency directories
+**/node_modules/
+
+# Local environment files containing private secrets and keys
+**/.env
+**/.env.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
+
+# Build outputs
+**/dist/
+**/build/
+
+# Local database file records (ignores mock db files but retains seeder logic)
+campus-market-server/data/*.json
+!campus-market-server/data/.gitkeep
+
+# Editor and System files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
