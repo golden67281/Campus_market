@@ -174,9 +174,13 @@ export async function writeTable(tableName, data) {
       }
 
       // Use _id field as document ID for MongoDB
-      const bulkOps = [];
       const newIds = new Set(data.map(item => item._id));
 
+      // 1. Delete removed documents first to avoid unique key index collisions during ID updates
+      await collection.deleteMany({ _id: { $nin: Array.from(newIds) } });
+
+      // 2. Perform upserts for the remaining/updated documents
+      const bulkOps = [];
       for (const item of data) {
         const { _id, ...rest } = item;
         bulkOps.push({
@@ -188,14 +192,9 @@ export async function writeTable(tableName, data) {
         });
       }
 
-      // Delete removed documents
-      bulkOps.push({
-        deleteMany: {
-          filter: { _id: { $nin: Array.from(newIds) } }
-        }
-      });
-
-      await collection.bulkWrite(bulkOps);
+      if (bulkOps.length > 0) {
+        await collection.bulkWrite(bulkOps);
+      }
       return;
 
     } catch (err) {
