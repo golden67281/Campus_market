@@ -17,10 +17,16 @@ export default function Footer() {
           <div>
             <h4 className="font-semibold text-gray-900 mb-4">Platform</h4>
             <ul className="space-y-2 text-sm text-gray-500">
-              <li><Link to="/about" className="hover:text-indigo-600 transition">About Us</Link></li>
-              <li><Link to="/how-it-works" className="hover:text-indigo-600 transition">How It Works</Link></li>
-              <li><Link to="/safety" className="hover:text-indigo-600 transition">Safety Tips</Link></li>
+              <li>
+                <Link
+                  to="/about"
+                  className="inline-flex items-center gap-1.5 font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition"
+                >
+                  ✨ About Us
+                </Link>
+              </li>
               <li><Link to="/contact" className="hover:text-indigo-600 transition">Contact Us</Link></li>
+              <li><Link to="/safety" className="hover:text-indigo-600 transition">Safety Tips</Link></li>
             </ul>
           </div>
           <div>

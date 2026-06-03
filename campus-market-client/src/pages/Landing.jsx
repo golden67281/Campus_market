@@ -38,6 +38,12 @@ export default function Landing() {
                   Browse Products
                 </Button>
               </Link>
+              <Link
+                to="/about"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 text-indigo-600 font-semibold text-base hover:underline underline-offset-4 transition"
+              >
+                ✨ Learn About Us
+              </Link>
             </div>
           </div>
         </PageWrapper>
