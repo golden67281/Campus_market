@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getMe, updateProfile } from '../api/userApi';
+import { getMe, updateProfile, changePassword } from '../api/userApi';
 import useAuthStore from '../store/authStore';
 import Button from '../components/ui/Button';
 import PageWrapper from '../components/layout/PageWrapper';
@@ -71,7 +71,7 @@ export default function EditProfile() {
     if (pwdForm.newPwd !== pwdForm.confirm) { toast.error("Passwords don't match"); return; }
     setPwdLoading(true);
     try {
-      await updateProfile({ currentPassword: pwdForm.current, newPassword: pwdForm.newPwd });
+      await changePassword(pwdForm.current, pwdForm.newPwd);
       toast.success('Password updated!');
       setPwdForm({ current: '', newPwd: '', confirm: '' });
     } catch (e) { toast.error(e.response?.data?.message || 'Failed to update password'); }

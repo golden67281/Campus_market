@@ -1,4 +1,5 @@
 import express from 'express';
+import bcrypt from 'bcryptjs';
 import { readTable, writeTable } from '../utils/db.js';
 import authMiddleware from '../middleware/authMiddleware.js';
 import { normalizeProduct, normalizeUser } from '../utils/imageHelper.js';
@@ -65,10 +66,9 @@ router.get('/me', async (req, res, next) => {
   }
 });
 
-// 3. Update User Profile
+// 3. Update User Profile (profile info only, NOT password)
 router.put('/me', upload.single('avatar'), async (req, res, next) => {
   try {
-    const updates = req.body;
     const users = await readTable('users');
     const idx = users.findIndex(u => u._id === req.user._id);
 
@@ -76,9 +76,19 @@ router.put('/me', upload.single('avatar'), async (req, res, next) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Filter out fields that should not be updated directly or require safety checks
-    const fieldsToIgnore = ['_id', 'password', 'role', 'status', 'createdAt', 'collegeEmailVerified'];
-    fieldsToIgnore.forEach(f => delete updates[f]);
+    // WHITELIST: Only allow safe profile fields to be updated
+    const allowedFields = ['name', 'username', 'college', 'city', 'year', 'department', 'area', 'collegeEmail', 'lat', 'lng'];
+    const rawUpdates = req.body;
+    const updates = {};
+
+    allowedFields.forEach(field => {
+      if (rawUpdates[field] !== undefined) {
+        // Skip empty strings — don't overwrite existing data with blank values
+        if (rawUpdates[field] !== '' && rawUpdates[field] !== 'undefined' && rawUpdates[field] !== 'null') {
+          updates[field] = rawUpdates[field];
+        }
+      }
+    });
 
     // Check if college has changed: resetting verification badge
     if (updates.college && updates.college !== users[idx].college) {
@@ -86,21 +96,58 @@ router.put('/me', upload.single('avatar'), async (req, res, next) => {
       users[idx].collegeEmail = null;
     }
 
-    // Save avatar path if uploaded
+    // Save avatar path if uploaded as a file
     if (req.file) {
       updates.avatar = `/uploads/avatars/${req.file.filename}`;
     }
 
-    // Assign updates
+    // Safely merge only whitelisted updates
     Object.assign(users[idx], updates);
 
     await writeTable('users', users);
 
-    const { password: _, ...userWithoutPassword } = users[idx];
+    const { password: _, securityAnswer: __, ...userWithoutSecrets } = users[idx];
     res.status(200).json({
       message: 'Profile updated successfully!',
-      user: normalizeUser(userWithoutPassword, req)
+      user: normalizeUser(userWithoutSecrets, req)
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 3b. Change Password (separate endpoint to avoid contaminating profile data)
+router.put('/me/password', async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Current and new password are required' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'New password must be at least 6 characters' });
+    }
+
+    const users = await readTable('users');
+    const idx = users.findIndex(u => u._id === req.user._id);
+
+    if (idx === -1) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Verify current password
+    const isMatch = await bcrypt.compare(currentPassword, users[idx].password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    // Hash and save new password
+    const salt = await bcrypt.genSalt(10);
+    users[idx].password = await bcrypt.hash(newPassword, salt);
+
+    await writeTable('users', users);
+
+    res.status(200).json({ message: 'Password updated successfully!' });
   } catch (err) {
     next(err);
   }

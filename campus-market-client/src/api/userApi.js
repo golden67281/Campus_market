@@ -2,6 +2,7 @@ import api from './axiosInstance';
 
 export const getMe = () => api.get('/users/me');
 export const updateProfile = (data) => api.put('/users/me', data);
+export const changePassword = (currentPassword, newPassword) => api.put('/users/me/password', { currentPassword, newPassword });
 export const checkUsername = (username) => api.get(`/users/check-username?u=${username}`);
 export const verifyCollegeEmail = (email) => api.post('/users/verify-college-email', { email });
 export const getMyListings = () => api.get('/users/me/listings');
