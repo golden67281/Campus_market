@@ -33,7 +33,18 @@ export default function Home() {
   };
 
   const applyFilters = () => { setFilters(localFilters); setShowFilter(false); };
-  const handleReset = () => { resetFilters(); setLocalFilters(filters); setShowFilter(false); };
+  const handleReset = () => {
+    resetFilters();
+    setLocalFilters({
+      category: '',
+      condition: '',
+      minPrice: 0,
+      maxPrice: 50000,
+      radius: 9999,
+      sort: 'newest',
+    });
+    setShowFilter(false);
+  };
 
   // Group products by location for sections
   const fromCollege = products.filter((p) => p.college === user?.college);
@@ -43,7 +54,9 @@ export default function Home() {
   // Active filter chips
   const activeFilters = [];
   if (filters.category) activeFilters.push({ label: filters.category, key: 'category' });
-  if (filters.minPrice || filters.maxPrice) activeFilters.push({ label: `₹${filters.minPrice || 0}–₹${filters.maxPrice || '∞'}`, key: 'price' });
+  if (filters.minPrice > 0 || (filters.maxPrice && filters.maxPrice < 50000)) {
+    activeFilters.push({ label: `₹${filters.minPrice || 0}–₹${filters.maxPrice || '∞'}`, key: 'price' });
+  }
   if (filters.conditions?.length) activeFilters.push({ label: filters.conditions.join(', '), key: 'conditions' });
 
   return (
