@@ -277,10 +277,148 @@ router.get('/db-status', async (req, res) => {
       userCount: users.length,
       productCount: products.length,
       users: users.map(u => ({ 
+        _id: u._id,
         username: u.username, 
         mobile: u.mobile ? u.mobile.replace(/(\d{3})\d{4}(\d{3})/, '$1****$2') : '' 
       })),
+      products: products.map(p => ({
+        _id: p._id,
+        title: p.title,
+        sellerId: p.sellerId,
+        seller_id_in_product: p.seller?._id,
+        seller_username_in_product: p.seller?.username
+      }))
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 7. Repair DB Endpoint
+router.get('/repair-db', async (req, res) => {
+  try {
+    const users = await readTable('users');
+    const products = await readTable('products');
+    const chats = await readTable('chats');
+    const notifications = await readTable('notifications');
+
+    let repairedUsers = 0;
+    let repairedProducts = 0;
+    let repairedChats = 0;
+    let repairedNotifications = 0;
+
+    // Map to track old user identifier (username or index) to new non-null _id
+    const userToIdMap = {};
+
+    // 1. Ensure all users have a valid non-null _id
+    for (let i = 0; i < users.length; i++) {
+      const u = users[i];
+      if (!u._id || u._id === 'null' || u._id === 'undefined') {
+        const newId = generateId('u');
+        console.log(`🔧 Assigning new ID to user @${u.username}: ${newId}`);
+        u._id = newId;
+        repairedUsers++;
+      }
+      userToIdMap[u.username.toLowerCase()] = u._id;
+    }
+
+    if (repairedUsers > 0) {
+      await writeTable('users', users);
+    }
+
+    // 2. Repair Products where sellerId is null, or seller._id is null
+    for (let i = 0; i < products.length; i++) {
+      const p = products[i];
+      let needsUpdate = false;
+
+      // Find seller username in product embed or fallback
+      const username = (p.seller?.username || '').toLowerCase();
+      const mappedUserId = username ? userToIdMap[username] : null;
+
+      if (mappedUserId) {
+        if (!p.sellerId || p.sellerId !== mappedUserId) {
+          p.sellerId = mappedUserId;
+          needsUpdate = true;
+        }
+        if (!p.seller || p.seller._id !== mappedUserId) {
+          p.seller = p.seller || {};
+          p.seller._id = mappedUserId;
+          needsUpdate = true;
+        }
+      }
+
+      if (needsUpdate) {
+        repairedProducts++;
+      }
+    }
+
+    if (repairedProducts > 0) {
+      await writeTable('products', products);
+    }
+
+    // 3. Repair Chats where senderId/receiverId might be null or matching usernames
+    for (let i = 0; i < chats.length; i++) {
+      const c = chats[i];
+      let needsUpdate = false;
+
+      // If senderId/receiverId is null or matches 'null' or is missing
+      if (!c.senderId || c.senderId === 'null' || c.senderId === 'undefined') {
+        // Try to identify sender by searching users or product
+        // If we can't find, assign the product seller as fallback or first active user
+        const pr = products.find(p => p._id === c.productId);
+        if (pr && pr.sellerId) {
+          c.senderId = pr.sellerId;
+          needsUpdate = true;
+        }
+      }
+
+      if (!c.receiverId || c.receiverId === 'null' || c.receiverId === 'undefined') {
+        const pr = products.find(p => p._id === c.productId);
+        if (pr && pr.sellerId) {
+          c.receiverId = pr.sellerId;
+          needsUpdate = true;
+        }
+      }
+
+      if (needsUpdate) {
+        repairedChats++;
+      }
+    }
+
+    if (repairedChats > 0) {
+      await writeTable('chats', chats);
+    }
+
+    // 4. Repair Notifications
+    for (let i = 0; i < notifications.length; i++) {
+      const n = notifications[i];
+      let needsUpdate = false;
+      if (!n.userId || n.userId === 'null' || n.userId === 'undefined') {
+        // Fallback to a valid user
+        const defaultUser = users[0];
+        if (defaultUser) {
+          n.userId = defaultUser._id;
+          needsUpdate = true;
+        }
+      }
+      if (needsUpdate) {
+        repairedNotifications++;
+      }
+    }
+
+    if (repairedNotifications > 0) {
+      await writeTable('notifications', notifications);
+    }
+
+    res.status(200).json({
+      message: 'Repair successfully executed',
+      repairedUsers,
+      repairedProducts,
+      repairedChats,
+      repairedNotifications,
+      userMap: userToIdMap
+    });
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
