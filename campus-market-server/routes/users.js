@@ -5,6 +5,7 @@ import authMiddleware from '../middleware/authMiddleware.js';
 import { normalizeProduct, normalizeUser } from '../utils/imageHelper.js';
 import { upload } from '../middleware/uploadMiddleware.js';
 import { sendVerificationOTP } from '../utils/mailer.js';
+import { uploadAvatarToCloudinary } from '../utils/cloudinary.js';
 
 const router = express.Router();
 
@@ -97,9 +98,14 @@ router.put('/me', upload.single('avatar'), async (req, res, next) => {
       users[idx].collegeEmail = null;
     }
 
-    // Save avatar path if uploaded as a file
+    // Upload avatar to Cloudinary if a new file was provided
     if (req.file) {
-      updates.avatar = `/uploads/avatars/${req.file.filename}`;
+      try {
+        updates.avatar = await uploadAvatarToCloudinary(req.file.buffer);
+      } catch (uploadErr) {
+        console.error('[Avatar Upload Error during profile update]', uploadErr.message);
+        // Don't fail the whole update if avatar upload fails
+      }
     }
 
     // Safely merge only whitelisted updates

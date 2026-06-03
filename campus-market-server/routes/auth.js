@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { readTable, writeTable, generateId } from '../utils/db.js';
 import { upload } from '../middleware/uploadMiddleware.js';
+import { uploadAvatarToCloudinary } from '../utils/cloudinary.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'campus_market_super_secure_secret_token_key_123';
@@ -114,10 +115,15 @@ router.post('/signup', upload.single('avatar'), async (req, res, next) => {
     const passwordHash = await bcrypt.hash(password, salt);
     const answerHash = await bcrypt.hash(securityAnswer.toLowerCase().trim(), salt);
 
-    // Save avatar path if uploaded
+    // Upload avatar to Cloudinary if provided
     let avatarUrl = null;
     if (req.file) {
-      avatarUrl = `/uploads/avatars/${req.file.filename}`;
+      try {
+        avatarUrl = await uploadAvatarToCloudinary(req.file.buffer);
+      } catch (uploadErr) {
+        console.error('[Avatar Upload Error during signup]', uploadErr.message);
+        // Don't fail signup if avatar upload fails — just skip it
+      }
     }
 
     const newUser = {
@@ -250,8 +256,24 @@ router.get('/db-status', async (req, res) => {
     const users = await readTable('users');
     const products = await readTable('products');
     
+    let writeTestResult = 'Not attempted';
+    let writeTestError = null;
+    
+    if (hasUri) {
+      try {
+        const testData = [{ _id: 'test_diag', timestamp: new Date().toISOString() }];
+        await writeTable('diagnostics_test', testData);
+        writeTestResult = 'Success';
+      } catch (err) {
+        writeTestResult = 'Failed';
+        writeTestError = err.message;
+      }
+    }
+    
     res.status(200).json({
       hasUri,
+      writeTestResult,
+      writeTestError,
       userCount: users.length,
       productCount: products.length,
       users: users.map(u => ({ 
