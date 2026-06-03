@@ -12,7 +12,7 @@ router.post('/image', upload.single('image'), (req, res) => {
     return res.status(400).json({ message: 'Please provide an image to upload.' });
   }
 
-  const fileUrl = `http://localhost:5000/uploads/products/${req.file.filename}`;
+  const fileUrl = `/uploads/products/${req.file.filename}`;
   res.status(200).json({
     message: 'Image uploaded successfully!',
     url: fileUrl

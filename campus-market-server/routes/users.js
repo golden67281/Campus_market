@@ -1,6 +1,7 @@
 import express from 'express';
 import { readTable, writeTable } from '../utils/db.js';
 import authMiddleware from '../middleware/authMiddleware.js';
+import { normalizeProduct, normalizeUser } from '../utils/imageHelper.js';
 
 const router = express.Router();
 
@@ -35,7 +36,8 @@ router.get('/me', async (req, res, next) => {
     }
 
     const { password: _, ...userWithoutPassword } = user;
-    res.status(200).json(userWithoutPassword);
+    const normalized = normalizeUser(userWithoutPassword, req);
+    res.status(200).json(normalized);
   } catch (err) {
     next(err);
   }
@@ -70,7 +72,7 @@ router.put('/me', async (req, res, next) => {
     const { password: _, ...userWithoutPassword } = users[idx];
     res.status(200).json({
       message: 'Profile updated successfully!',
-      user: userWithoutPassword
+      user: normalizeUser(userWithoutPassword, req)
     });
   } catch (err) {
     next(err);
@@ -106,7 +108,7 @@ router.post('/verify-college-email', async (req, res, next) => {
     const { password: _, ...userWithoutPassword } = users[idx];
     res.status(200).json({
       message: 'Student status successfully verified! ✅',
-      user: userWithoutPassword
+      user: normalizeUser(userWithoutPassword, req)
     });
   } catch (err) {
     next(err);
@@ -118,8 +120,9 @@ router.get('/me/listings', async (req, res, next) => {
   try {
     const products = await readTable('products');
     const myListings = products.filter(p => p.sellerId === req.user._id && p.status !== 'deleted');
+    const normalized = myListings.map(p => normalizeProduct(p, req));
 
-    res.status(200).json(myListings);
+    res.status(200).json(normalized);
   } catch (err) {
     next(err);
   }
@@ -131,8 +134,9 @@ router.get('/:id/listings', async (req, res, next) => {
     const { id } = req.params;
     const products = await readTable('products');
     const userListings = products.filter(p => p.sellerId === id && p.status === 'active');
+    const normalized = userListings.map(p => normalizeProduct(p, req));
 
-    res.status(200).json(userListings);
+    res.status(200).json(normalized);
   } catch (err) {
     next(err);
   }
@@ -165,7 +169,8 @@ router.get('/:id', async (req, res, next) => {
       whatsapp: user.showWhatsapp ? user.whatsapp : null
     };
 
-    res.status(200).json(publicProfile);
+    const normalized = normalizeUser(publicProfile, req);
+    res.status(200).json(normalized);
   } catch (err) {
     next(err);
   }

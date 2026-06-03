@@ -1,6 +1,7 @@
 import express from 'express';
 import { readTable, writeTable, generateId } from '../utils/db.js';
 import authMiddleware from '../middleware/authMiddleware.js';
+import { normalizeProduct } from '../utils/imageHelper.js';
 
 const router = express.Router();
 
@@ -39,8 +40,14 @@ router.get('/', async (req, res, next) => {
       })
     );
 
-    // Filter out entries where the product was deleted
-    res.status(200).json(populated.filter(x => x !== null));
+    const normalized = populated
+      .filter(x => x !== null)
+      .map(item => ({
+        ...item,
+        product: normalizeProduct(item.product, req)
+      }));
+
+    res.status(200).json(normalized);
   } catch (err) {
     next(err);
   }

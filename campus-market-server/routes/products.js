@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { readTable, writeTable, generateId } from '../utils/db.js';
 import authMiddleware from '../middleware/authMiddleware.js';
 import { getDistanceKm } from '../utils/distance.js';
+import { normalizeProduct } from '../utils/imageHelper.js';
 
 const router = express.Router();
 
@@ -74,8 +75,9 @@ router.get('/', async (req, res, next) => {
 
     // Populate seller for each product
     const populated = await Promise.all(products.map(p => populateSeller(p, users)));
+    const normalized = populated.map(p => normalizeProduct(p, req));
 
-    res.status(200).json(populated);
+    res.status(200).json(normalized);
   } catch (err) {
     next(err);
   }
@@ -100,7 +102,8 @@ router.get('/search', async (req, res, next) => {
     }
 
     const populated = await Promise.all(products.map(p => populateSeller(p, users)));
-    res.status(200).json(populated);
+    const normalized = populated.map(p => normalizeProduct(p, req));
+    res.status(200).json(normalized);
   } catch (err) {
     next(err);
   }
@@ -152,7 +155,8 @@ router.get('/:id', async (req, res, next) => {
       }
     }
 
-    res.status(200).json(populated);
+    const normalized = normalizeProduct(populated, req);
+    res.status(200).json(normalized);
   } catch (err) {
     next(err);
   }
@@ -211,7 +215,8 @@ router.post('/', async (req, res, next) => {
     await writeTable('products', products);
 
     const populated = await populateSeller(newProduct, users);
-    res.status(201).json(populated);
+    const normalized = normalizeProduct(populated, req);
+    res.status(201).json(normalized);
   } catch (err) {
     next(err);
   }
@@ -242,7 +247,8 @@ router.put('/:id', async (req, res, next) => {
     await writeTable('products', products);
 
     const populated = await populateSeller(products[idx]);
-    res.status(200).json(populated);
+    const normalized = normalizeProduct(populated, req);
+    res.status(200).json(normalized);
   } catch (err) {
     next(err);
   }

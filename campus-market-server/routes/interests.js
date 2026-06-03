@@ -1,6 +1,7 @@
 import express from 'express';
 import { readTable, writeTable, generateId } from '../utils/db.js';
 import authMiddleware from '../middleware/authMiddleware.js';
+import { normalizeProduct } from '../utils/imageHelper.js';
 
 const router = express.Router();
 
@@ -90,7 +91,12 @@ router.get('/mine', async (req, res, next) => {
       return { ...i, product: prod };
     });
 
-    res.status(200).json(populated);
+    const normalized = populated.map(i => ({
+      ...i,
+      product: normalizeProduct(i.product, req)
+    }));
+
+    res.status(200).json(normalized);
   } catch (err) {
     next(err);
   }
