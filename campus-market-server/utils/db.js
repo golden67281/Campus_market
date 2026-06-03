@@ -99,7 +99,8 @@ export async function readTable(tableName) {
   if (db) {
     try {
       const collection = db.collection(tableName);
-      const data = await collection.find({}, { projection: { _id: 0 } }).toArray();
+      // Do NOT exclude _id — our documents use _id as a string key (e.g. "u_aarav")
+      const data = await collection.find({}).toArray();
 
       // Auto-Migration: If MongoDB collection is empty, migrate local JSON data
       if (data.length === 0) {
@@ -122,11 +123,7 @@ export async function readTable(tableName) {
         }
       }
 
-      // Re-map _id from MongoDB if needed
-      return data.map(doc => {
-        const { _id: mongoId, ...rest } = doc;
-        return mongoId ? doc : rest;
-      });
+      return data;
 
     } catch (err) {
       console.error(`❌ MongoDB read error on '${tableName}':`, err.message);
