@@ -281,13 +281,7 @@ router.get('/db-status', async (req, res) => {
         username: u.username, 
         mobile: u.mobile ? u.mobile.replace(/(\d{3})\d{4}(\d{3})/, '$1****$2') : '' 
       })),
-      products: products.map(p => ({
-        _id: p._id,
-        title: p.title,
-        sellerId: p.sellerId,
-        seller_id_in_product: p.seller?._id,
-        seller_username_in_product: p.seller?.username
-      }))
+      products: products
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
