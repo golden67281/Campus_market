@@ -11,17 +11,25 @@ export default function ChatList() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchConvos = async () => {
+    const fetchConvos = async (showLoading = false) => {
+      if (showLoading) setLoading(true);
       try {
         const res = await getConversations();
         setConversations(res.data);
       } catch (err) {
         console.error('Failed to load conversations', err);
       } finally {
-        setLoading(false);
+        if (showLoading) setLoading(false);
       }
     };
-    fetchConvos();
+
+    fetchConvos(true);
+
+    const interval = setInterval(() => {
+      fetchConvos(false);
+    }, 4000);
+
+    return () => clearInterval(interval);
   }, []);
 
   if (loading) {

@@ -1,8 +1,9 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Bell, Heart, Plus, User, LogOut, Settings, Package, MapPin, Menu, X, MessageSquare } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import useAuthStore from '../../store/authStore';
 import useNotificationStore from '../../store/notificationStore';
+import { getConversations } from '../../api/chatApi';
 import Button from '../ui/Button';
 import { useDebounce } from '../../hooks/useDebounce';
 import { initials } from '../../utils/formatters';
@@ -13,7 +14,22 @@ export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [unreadChats, setUnreadChats] = useState(0);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user) return;
+    const checkUnread = async () => {
+      try {
+        const res = await getConversations();
+        const total = res.data.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+        setUnreadChats(total);
+      } catch {}
+    };
+    checkUnread();
+    const interval = setInterval(checkUnread, 5000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   const handleLogout = () => {
     logout();
@@ -75,9 +91,14 @@ export default function Navbar() {
                 {/* Chats */}
                 <Link
                   to="/chats"
-                  className="p-2 text-gray-500 hover:bg-gray-50 rounded-full transition"
+                  className="relative p-2 text-gray-500 hover:bg-gray-50 rounded-full transition"
                 >
                   <MessageSquare size={20} />
+                  {unreadChats > 0 && (
+                    <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white font-bold">
+                      {unreadChats}
+                    </span>
+                  )}
                 </Link>
 
                 {/* Wishlist */}

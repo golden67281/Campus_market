@@ -6,7 +6,6 @@ const router = express.Router();
 
 router.use(authMiddleware);
 
-// 1. Get user's notifications (newest first)
 router.get('/', async (req, res, next) => {
   try {
     const notifications = await readTable('notifications');
@@ -15,7 +14,14 @@ router.get('/', async (req, res, next) => {
     // Sort newest first
     myAlerts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    res.status(200).json(myAlerts);
+    // Format for frontend (title -> message, body -> subMessage)
+    const formatted = myAlerts.map(n => ({
+      ...n,
+      message: n.message || n.title,
+      subMessage: n.subMessage || n.body
+    }));
+
+    res.status(200).json(formatted);
   } catch (err) {
     next(err);
   }

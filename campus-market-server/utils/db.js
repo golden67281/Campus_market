@@ -4,7 +4,9 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DATA_DIR = path.join(__dirname, '..', 'data');
+
+// Allow setting a persistent directory (e.g., Render Persistent Disk) to preserve database JSON files
+const DATA_DIR = process.env.PERSISTENT_DATA_DIR || path.join(__dirname, '..', 'data');
 
 // Queue/chain for sequential writes to avoid race conditions
 const writeQueue = {};

@@ -68,7 +68,15 @@ export default function Home() {
           {activeFilters.map((f) => (
             <span key={f.key} className="flex items-center gap-1 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-xs font-medium">
               {f.label}
-              <button onClick={() => setFilters({ ...filters, [f.key]: '' })}>
+              <button onClick={() => {
+                if (f.key === 'price') {
+                  setFilters({ ...filters, minPrice: 0, maxPrice: 50000 });
+                } else if (f.key === 'conditions') {
+                  setFilters({ ...filters, conditions: [] });
+                } else {
+                  setFilters({ ...filters, [f.key]: '' });
+                }
+              }}>
                 <X size={12} />
               </button>
             </span>

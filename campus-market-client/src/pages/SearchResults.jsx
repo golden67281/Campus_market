@@ -10,7 +10,7 @@ import PageWrapper from '../components/layout/PageWrapper';
 import EmptyState from '../components/ui/EmptyState';
 import { SORT_OPTIONS } from '../utils/constants';
 
-const DEFAULT_FILTERS = { category: '', conditions: [], minPrice: '', maxPrice: '', radius: 25, sort: 'newest' };
+const DEFAULT_FILTERS = { category: '', conditions: [], minPrice: '', maxPrice: '', radius: 9999, sort: 'newest' };
 
 export default function SearchResults() {
   const [searchParams] = useSearchParams();
@@ -81,7 +81,15 @@ export default function SearchResults() {
           {activeChips.map((chip) => (
             <span key={chip.key} className="flex items-center gap-1 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-xs font-medium">
               {chip.label}
-              <button onClick={() => setFilters({ ...filters, [chip.key]: '' })}><X size={12} /></button>
+              <button onClick={() => {
+                if (chip.key === 'price') {
+                  setFilters({ ...filters, minPrice: '', maxPrice: '' });
+                } else if (chip.key === 'conditions') {
+                  setFilters({ ...filters, conditions: [] });
+                } else {
+                  setFilters({ ...filters, [chip.key]: '' });
+                }
+              }}><X size={12} /></button>
             </span>
           ))}
           {activeChips.length > 0 && (

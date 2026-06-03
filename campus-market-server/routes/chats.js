@@ -212,11 +212,14 @@ router.post('/', async (req, res, next) => {
 
     // Create Notification for the receiver
     const notifications = await readTable('notifications');
+    const sender = users.find((u) => u._id === senderId);
+    const senderName = sender ? sender.name : (req.user.username || 'A student');
+
     notifications.push({
       _id: generateId('n'),
       userId: receiverId,
       type: 'chat_message',
-      title: `${req.user.name} sent you a message`,
+      title: `${senderName} sent you a message`,
       body: text.trim().length > 60 ? `${text.trim().substring(0, 60)}...` : text.trim(),
       relatedProductId: productId,
       relatedUserId: senderId,

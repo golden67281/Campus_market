@@ -7,7 +7,7 @@ const useProductStore = create((set) => ({
     condition: '',
     minPrice: 0,
     maxPrice: 50000,
-    radius: 25,
+    radius: 9999,
     sort: 'newest',
   },
   searchQuery: '',
@@ -23,7 +23,7 @@ const useProductStore = create((set) => ({
       condition: '',
       minPrice: 0,
       maxPrice: 50000,
-      radius: 25,
+      radius: 9999,
       sort: 'newest',
     } 
   }),
