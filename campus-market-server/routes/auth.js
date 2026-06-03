@@ -117,7 +117,7 @@ router.post('/signup', upload.single('avatar'), async (req, res, next) => {
     // Save avatar path if uploaded
     let avatarUrl = null;
     if (req.file) {
-      avatarUrl = `http://localhost:5000/uploads/avatars/${req.file.filename}`;
+      avatarUrl = `/uploads/avatars/${req.file.filename}`;
     }
 
     const newUser = {

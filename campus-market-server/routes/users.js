@@ -2,6 +2,7 @@ import express from 'express';
 import { readTable, writeTable } from '../utils/db.js';
 import authMiddleware from '../middleware/authMiddleware.js';
 import { normalizeProduct, normalizeUser } from '../utils/imageHelper.js';
+import { upload } from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
 
@@ -65,7 +66,7 @@ router.get('/me', async (req, res, next) => {
 });
 
 // 3. Update User Profile
-router.put('/me', async (req, res, next) => {
+router.put('/me', upload.single('avatar'), async (req, res, next) => {
   try {
     const updates = req.body;
     const users = await readTable('users');
@@ -83,6 +84,11 @@ router.put('/me', async (req, res, next) => {
     if (updates.college && updates.college !== users[idx].college) {
       users[idx].collegeEmailVerified = false;
       users[idx].collegeEmail = null;
+    }
+
+    // Save avatar path if uploaded
+    if (req.file) {
+      updates.avatar = `/uploads/avatars/${req.file.filename}`;
     }
 
     // Assign updates
