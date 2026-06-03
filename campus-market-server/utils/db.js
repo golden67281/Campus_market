@@ -72,17 +72,22 @@ export async function readTable(tableName) {
 
       // Auto-Migration: If MongoDB collection is empty, check if we can migrate local JSON data
       if (data.length === 0) {
-        const filePath = path.join(DATA_DIR, `${tableName}.json`);
-        try {
-          const content = await fs.readFile(filePath, 'utf8');
-          const jsonData = JSON.parse(content || '[]');
-          if (jsonData.length > 0) {
-            console.log(`📦 [Auto-Migration] Seeding empty MongoDB collection '${tableName}' from local JSON file...`);
-            await writeTable(tableName, jsonData);
-            return [...jsonData];
+        const pathsToTry = [
+          path.join(DATA_DIR, `${tableName}.json`),
+          path.join(__dirname, '..', 'data', `${tableName}.json`) // fallback to repo default directory
+        ];
+        for (const filePath of pathsToTry) {
+          try {
+            const content = await fs.readFile(filePath, 'utf8');
+            const jsonData = JSON.parse(content || '[]');
+            if (jsonData.length > 0) {
+              console.log(`📦 [Auto-Migration] Seeding empty MongoDB collection '${tableName}' from file: ${filePath}`);
+              await writeTable(tableName, jsonData);
+              return [...jsonData];
+            }
+          } catch (jsonErr) {
+            // Try next path
           }
-        } catch (jsonErr) {
-          // JSON file doesn't exist or is invalid, ignore
         }
       }
 
