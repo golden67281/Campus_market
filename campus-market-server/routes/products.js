@@ -8,12 +8,33 @@ import { normalizeProduct } from '../utils/imageHelper.js';
 const router = express.Router();
 
 // Helper to populate seller details for a product
+// Also auto-repairs null sellerId using embedded seller.username (from old MongoDB migration bug)
 async function populateSeller(product, usersList = null) {
   const users = usersList || await readTable('users');
-  const seller = users.find(u => u._id === product.sellerId);
+  let seller = users.find(u => u._id === product.sellerId);
+
+  // Fallback: if sellerId is null/missing, try matching by embedded seller username
+  if (!seller && product.seller && product.seller.username) {
+    seller = users.find(u => u.username === product.seller.username);
+    if (seller) {
+      // Auto-repair: update the product's sellerId in the database
+      try {
+        const allProducts = await readTable('products');
+        const idx = allProducts.findIndex(p => p._id === product._id);
+        if (idx !== -1 && !allProducts[idx].sellerId) {
+          allProducts[idx].sellerId = seller._id;
+          await writeTable('products', allProducts);
+          console.log(`🔧 Auto-repaired sellerId for product ${product._id} → ${seller._id}`);
+        }
+      } catch (repairErr) {
+        console.error('Auto-repair failed:', repairErr.message);
+      }
+    }
+  }
+
   if (seller) {
-    const { password, ...safeSeller } = seller;
-    return { ...product, seller: safeSeller };
+    const { password, securityAnswer, ...safeSeller } = seller;
+    return { ...product, sellerId: seller._id, seller: { ...safeSeller, _id: seller._id } };
   }
   return product;
 }
