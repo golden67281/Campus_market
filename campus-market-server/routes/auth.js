@@ -270,18 +270,25 @@ router.get('/db-status', async (req, res) => {
       }
     }
     
+    const chats = await readTable('chats');
+    const notifications = await readTable('notifications');
+    
     res.status(200).json({
       hasUri,
       writeTestResult,
       writeTestError,
       userCount: users.length,
       productCount: products.length,
+      chatCount: chats.length,
+      notificationCount: notifications.length,
       users: users.map(u => ({ 
         _id: u._id,
         username: u.username, 
         mobile: u.mobile ? u.mobile.replace(/(\d{3})\d{4}(\d{3})/, '$1****$2') : '' 
       })),
-      products: products
+      products: products,
+      chats: chats,
+      notifications: notifications
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -326,17 +333,33 @@ router.get('/repair-db', async (req, res) => {
       let needsUpdate = false;
 
       // Find seller username in product embed or fallback
-      const username = (p.seller?.username || '').toLowerCase();
-      const mappedUserId = username ? userToIdMap[username] : null;
+      let username = (p.seller?.username || '').toLowerCase();
+      let mappedUserId = username ? userToIdMap[username] : null;
+
+      // Fallback: if mappedUserId is null, check if product has a location matching a user's mobile (last 10 digits)
+      if (!mappedUserId && p.location) {
+        const cleanedLocation = String(p.location).trim();
+        const matchingUser = users.find(u => {
+          const cleanedMobile = String(u.mobile || '').replace(/\D/g, ''); // get only digits (e.g. "916287089715")
+          return cleanedMobile.endsWith(cleanedLocation);
+        });
+        if (matchingUser) {
+          mappedUserId = matchingUser._id;
+          username = matchingUser.username;
+        }
+      }
 
       if (mappedUserId) {
-        if (!p.sellerId || p.sellerId !== mappedUserId) {
-          p.sellerId = mappedUserId;
-          needsUpdate = true;
-        }
-        if (!p.seller || p.seller._id !== mappedUserId) {
-          p.seller = p.seller || {};
-          p.seller._id = mappedUserId;
+        const matchingUser = users.find(u => u._id === mappedUserId);
+        if (matchingUser) {
+          if (!p.sellerId || p.sellerId !== mappedUserId) {
+            p.sellerId = mappedUserId;
+            needsUpdate = true;
+          }
+          
+          // Re-populate the safe seller details
+          const { password, securityAnswer, ...safeSeller } = matchingUser;
+          p.seller = { ...safeSeller, _id: mappedUserId };
           needsUpdate = true;
         }
       }
