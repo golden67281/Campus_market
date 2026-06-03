@@ -56,7 +56,10 @@ export default function ProductDetail() {
 
   const handleContact = () => {
     if (!user) { setLoginModalOpen(true); return; }
-    navigate(`/chat/${product._id}/${product.seller._id}`);
+    // Use sellerId as fallback in case seller._id is null (MongoDB migration edge case)
+    const sellerId = product.seller?._id || product.sellerId;
+    if (!sellerId) { toast.error('Seller information unavailable'); return; }
+    navigate(`/chat/${product._id}/${sellerId}`);
   };
 
   const handleReport = async () => {

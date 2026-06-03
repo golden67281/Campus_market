@@ -184,7 +184,17 @@ router.post('/', async (req, res, next) => {
     }
 
     const users = await readTable('users');
-    const receiver = users.find((u) => u._id === receiverId);
+    let receiver = users.find((u) => u._id === receiverId);
+
+    // Fallback: if receiver not found by _id, check if receiverId matches a sellerId on the product
+    if (!receiver) {
+      const products = await readTable('products');
+      const product = products.find((p) => p._id === productId);
+      if (product && product.sellerId && product.sellerId !== receiverId) {
+        receiver = users.find((u) => u._id === product.sellerId);
+      }
+    }
+
     if (!receiver) {
       return res.status(404).json({ message: 'Message receiver not found' });
     }
