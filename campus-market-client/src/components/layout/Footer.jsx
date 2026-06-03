@@ -37,9 +37,9 @@ export default function Footer() {
             © 2025 Campus Market. Made with ❤️ for Indian students.
           </p>
           <div className="flex gap-6 text-gray-400">
-            <a href="#" className="hover:text-indigo-600 transition text-sm">Instagram</a>
-            <a href="#" className="hover:text-indigo-600 transition text-sm">Twitter</a>
-            <a href="#" className="hover:text-indigo-600 transition text-sm">LinkedIn</a>
+            <a href="https://instagram.com/satyam_sharma728" target="_blank" rel="noopener noreferrer" className="hover:text-pink-500 transition text-sm">Instagram</a>
+            <a href="https://wa.me/916287089715" target="_blank" rel="noopener noreferrer" className="hover:text-green-600 transition text-sm">WhatsApp</a>
+            <a href="tel:+916287089715" className="hover:text-indigo-600 transition text-sm">Call Us</a>
           </div>
         </div>
       </div>

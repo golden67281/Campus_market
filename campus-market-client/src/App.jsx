@@ -24,6 +24,7 @@ const Settings      = lazy(() => import('./pages/Settings'));
 const NotFound      = lazy(() => import('./pages/NotFound'));
 const ChatList      = lazy(() => import('./pages/ChatList'));
 const ChatRoom      = lazy(() => import('./pages/ChatRoom'));
+const Contact       = lazy(() => import('./pages/Contact'));
 
 function PageLoader() {
   return (
@@ -55,6 +56,7 @@ export default function App() {
               <Route path="/signup"       element={<Signup />} />
               <Route path="/search"       element={<SearchResults />} />
               <Route path="/product/:id"  element={<ProductDetail />} />
+              <Route path="/contact"      element={<Contact />} />
 
               {/* Protected */}
               <Route element={<ProtectedRoute />}>
