@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Phone, MessageCircle, Instagram, Mail, MapPin, Clock, Send, ChevronRight } from 'lucide-react';
+import { Phone, MessageCircle, Share2, Mail, MapPin, Clock, ChevronRight } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
 
 const CONTACT_CARDS = [
@@ -31,7 +31,7 @@ const CONTACT_CARDS = [
   },
   {
     id: 'instagram',
-    icon: Instagram,
+    icon: Share2,
     label: 'Instagram',
     value: '@satyam_sharma728',
     sub: 'DM us on Instagram',
@@ -183,14 +183,14 @@ export default function Contact() {
               >
                 <MessageCircle size={18} /> WhatsApp Us
               </a>
-              <a
+                <a
                 href="https://instagram.com/satyam_sharma728"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 bg-white/10 border border-white/20 text-white font-bold px-6 py-3 rounded-xl hover:bg-white/20 transition-all hover:-translate-y-0.5"
                 id="contact-instagram-cta"
               >
-                <Instagram size={18} /> Follow on Instagram
+                <Share2 size={18} /> Follow on Instagram
               </a>
             </div>
           </div>
