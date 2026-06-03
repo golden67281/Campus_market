@@ -165,8 +165,7 @@ router.get('/:id', async (req, res, next) => {
       department: user.department,
       area: user.area,
       avatar: user.avatar,
-      createdAt: user.createdAt,
-      whatsapp: user.showWhatsapp ? user.whatsapp : null
+      createdAt: user.createdAt
     };
 
     const normalized = normalizeUser(publicProfile, req);
@@ -194,7 +193,6 @@ router.delete('/me', async (req, res, next) => {
       users[idx].mobile = '0000000000';
       users[idx].email = null;
       users[idx].collegeEmail = null;
-      users[idx].whatsapp = null;
       users[idx].avatar = null;
 
       // Soft-delete their listings

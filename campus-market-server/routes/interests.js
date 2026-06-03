@@ -160,7 +160,6 @@ router.get('/contact/:productId', async (req, res, next) => {
     // Return custom contact object required by client
     res.status(200).json({
       phone: seller.mobile,
-      whatsapp: seller.showWhatsapp && product.showWhatsapp !== false,
       meetingSpot: product.meetingSpot || seller.area || '',
       seller: {
         _id: seller._id,

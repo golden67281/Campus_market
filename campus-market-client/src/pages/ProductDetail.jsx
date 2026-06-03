@@ -56,7 +56,7 @@ export default function ProductDetail() {
 
   const handleContact = () => {
     if (!user) { setLoginModalOpen(true); return; }
-    navigate(`/product/${id}/interest`);
+    navigate(`/chat/${product._id}/${product.seller._id}`);
   };
 
   const handleReport = async () => {

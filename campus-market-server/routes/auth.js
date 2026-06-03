@@ -136,8 +136,6 @@ router.post('/signup', upload.single('avatar'), async (req, res, next) => {
       lat: lat ? Number(lat) : null,
       lng: lng ? Number(lng) : null,
       avatar: avatarUrl,
-      whatsapp: normalizedMobile,
-      showWhatsapp: true,
       password: passwordHash,
       securityQuestion,
       securityAnswer: answerHash,

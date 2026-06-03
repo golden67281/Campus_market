@@ -26,7 +26,7 @@ const SUB_CATEGORIES = {
 const INITIAL = {
   title: '', category: '', subCategory: '', condition: '', price: '',
   isNegotiable: false, isFree: false, images: [], description: '', tags: [],
-  location: '', meetingSpot: '', showWhatsapp: true, whatsappNumber: '',
+  location: '', meetingSpot: '',
 };
 
 export default function CreateListing() {
@@ -43,7 +43,7 @@ export default function CreateListing() {
     const draft = localStorage.getItem(DRAFT_KEY);
     if (draft) setHasDraft(true);
     // pre-fill from profile
-    setForm((f) => ({ ...f, location: user?.area || '', whatsappNumber: user?.mobile || '' }));
+    setForm((f) => ({ ...f, location: user?.area || '' }));
   }, []);
 
   const set = (key, val) => {
@@ -242,17 +242,7 @@ export default function CreateListing() {
                 <label className="label">Preferred Meeting Spot <span className="font-normal text-gray-400">(optional)</span></label>
                 <input className="input" placeholder="e.g. College canteen, Main gate" value={form.meetingSpot} onChange={(e) => set('meetingSpot', e.target.value)} />
               </div>
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="label">Show WhatsApp</label>
-                  <button type="button" onClick={() => set('showWhatsapp', !form.showWhatsapp)}>
-                    {form.showWhatsapp ? <ToggleRight size={24} className="text-indigo-600" /> : <ToggleLeft size={24} className="text-gray-400" />}
-                  </button>
-                </div>
-                {form.showWhatsapp && (
-                  <input className="input" placeholder="WhatsApp number" value={form.whatsappNumber} onChange={(e) => set('whatsappNumber', e.target.value)} />
-                )}
-              </div>
+
               <div className="flex gap-3">
                 <Button variant="secondary" onClick={() => setStep(2)} className="flex-1 justify-center">← Back</Button>
                 <Button variant="primary" onClick={() => setStep(4)} className="flex-1 justify-center">Review →</Button>

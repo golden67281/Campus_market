@@ -14,7 +14,6 @@ const Signup        = lazy(() => import('./pages/Signup'));
 const Home          = lazy(() => import('./pages/Home'));
 const SearchResults = lazy(() => import('./pages/SearchResults'));
 const ProductDetail = lazy(() => import('./pages/ProductDetail'));
-const ExpressInterest = lazy(() => import('./pages/ExpressInterest'));
 const CreateListing = lazy(() => import('./pages/CreateListing'));
 const Profile       = lazy(() => import('./pages/Profile'));
 const EditProfile   = lazy(() => import('./pages/EditProfile'));
@@ -23,6 +22,8 @@ const Wishlist      = lazy(() => import('./pages/Wishlist'));
 const Notifications = lazy(() => import('./pages/Notifications'));
 const Settings      = lazy(() => import('./pages/Settings'));
 const NotFound      = lazy(() => import('./pages/NotFound'));
+const ChatList      = lazy(() => import('./pages/ChatList'));
+const ChatRoom      = lazy(() => import('./pages/ChatRoom'));
 
 function PageLoader() {
   return (
@@ -58,7 +59,6 @@ export default function App() {
               {/* Protected */}
               <Route element={<ProtectedRoute />}>
                 <Route path="/home"              element={<Home />} />
-                <Route path="/product/:id/interest" element={<ExpressInterest />} />
                 <Route path="/sell"              element={<CreateListing />} />
                 <Route path="/profile"           element={<Profile />} />
                 <Route path="/profile/edit"      element={<EditProfile />} />
@@ -66,6 +66,8 @@ export default function App() {
                 <Route path="/wishlist"          element={<Wishlist />} />
                 <Route path="/notifications"     element={<Notifications />} />
                 <Route path="/settings"          element={<Settings />} />
+                <Route path="/chats"             element={<ChatList />} />
+                <Route path="/chat/:productId/:partnerId" element={<ChatRoom />} />
               </Route>
 
               {/* 404 */}

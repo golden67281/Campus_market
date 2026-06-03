@@ -138,7 +138,6 @@ router.get('/:id', async (req, res, next) => {
           if (seller) {
             populated.userContact = {
               phone: seller.mobile,
-              whatsapp: seller.showWhatsapp && product.showWhatsapp !== false,
               meetingSpot: product.meetingSpot || seller.area || '',
               seller: {
                 _id: seller._id,
@@ -169,7 +168,7 @@ router.use(authMiddleware);
 router.post('/', async (req, res, next) => {
   try {
     const {
-      title, category, subCategory, condition, price, isNegotiable, isFree, description, images, tags, location, meetingSpot, showWhatsapp, whatsappNumber
+      title, category, subCategory, condition, price, isNegotiable, isFree, description, images, tags, location, meetingSpot
     } = req.body;
 
     if (!title || !category || !condition || (!isFree && price === undefined)) {

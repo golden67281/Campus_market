@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Bell, Heart, Plus, User, LogOut, Settings, Package, MapPin, Menu, X } from 'lucide-react';
+import { Search, Bell, Heart, Plus, User, LogOut, Settings, Package, MapPin, Menu, X, MessageSquare } from 'lucide-react';
 import { useState } from 'react';
 import useAuthStore from '../../store/authStore';
 import useNotificationStore from '../../store/notificationStore';
@@ -72,6 +72,14 @@ export default function Navbar() {
                   )}
                 </Link>
 
+                {/* Chats */}
+                <Link
+                  to="/chats"
+                  className="p-2 text-gray-500 hover:bg-gray-50 rounded-full transition"
+                >
+                  <MessageSquare size={20} />
+                </Link>
+
                 {/* Wishlist */}
                 <Link to="/wishlist" className="hidden sm:block p-2 text-gray-500 hover:bg-gray-50 rounded-full transition">
                   <Heart size={20} />
@@ -110,6 +118,7 @@ export default function Navbar() {
                         </div>
                         {[
                           { icon: User, label: 'My Profile', to: '/profile' },
+                          { icon: MessageSquare, label: 'Chats', to: '/chats' },
                           { icon: Package, label: 'My Listings', to: '/my-listings' },
                           { icon: Heart, label: 'Wishlist', to: '/wishlist' },
                           { icon: Settings, label: 'Settings', to: '/settings' },

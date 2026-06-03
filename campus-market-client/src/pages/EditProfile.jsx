@@ -15,7 +15,7 @@ export default function EditProfile() {
   const navigate = useNavigate();
   const { detect: detectGps, loading: gpsLoading } = useLocation();
 
-  const [form, setForm] = useState({ name: '', username: '', college: '', city: '', year: '', department: '', area: '', whatsappNumber: '', showWhatsapp: true, collegeEmail: '' });
+  const [form, setForm] = useState({ name: '', username: '', college: '', city: '', year: '', department: '', area: '', collegeEmail: '' });
   const [pwdForm, setPwdForm] = useState({ current: '', newPwd: '', confirm: '' });
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -29,8 +29,7 @@ export default function EditProfile() {
       setForm({
         name: p.name || '', username: p.username || '', college: p.college || '',
         city: p.city || '', year: p.year || '', department: p.department || '',
-        area: p.area || '', whatsappNumber: p.whatsappNumber || '', showWhatsapp: p.showWhatsapp ?? true,
-        collegeEmail: p.collegeEmail || '',
+        area: p.area || '', collegeEmail: p.collegeEmail || '',
       });
       setAvatarPreview(p.avatar || null);
     }).catch(() => {});
@@ -159,14 +158,7 @@ export default function EditProfile() {
                   <Button variant="secondary" onClick={handleGps} loading={gpsLoading}><MapPin size={16} /></Button>
                 </div>
               </div>
-              <div>
-                <label className="label">WhatsApp Number</label>
-                <input className="input" placeholder="Mobile number" value={form.whatsappNumber} onChange={(e) => set('whatsappNumber', e.target.value)} />
-              </div>
-              <label className="flex items-center gap-2 cursor-pointer text-sm">
-                <input type="checkbox" checked={form.showWhatsapp} onChange={(e) => set('showWhatsapp', e.target.checked)} className="accent-indigo-600" />
-                Show WhatsApp on my listings
-              </label>
+
             </div>
           </div>
 

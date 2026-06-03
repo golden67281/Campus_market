@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, PlusSquare, Bell, User } from 'lucide-react';
+import { Home, Search, PlusSquare, MessageSquare, User } from 'lucide-react';
 import useNotificationStore from '../../store/notificationStore';
 import useAuthStore from '../../store/authStore';
 
@@ -12,7 +12,7 @@ export default function BottomTabBar() {
     { label: 'Home', path: user ? '/home' : '/', icon: Home },
     { label: 'Search', path: '/search', icon: Search },
     { label: 'Sell', path: '/sell', icon: PlusSquare },
-    { label: 'Alerts', path: '/notifications', icon: Bell, badge: unreadCount },
+    { label: 'Chats', path: '/chats', icon: MessageSquare },
     { label: 'Profile', path: '/profile', icon: User },
   ];
 

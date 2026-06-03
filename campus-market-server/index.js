@@ -13,6 +13,7 @@ import wishlistRouter from './routes/wishlist.js';
 import notificationsRouter from './routes/notifications.js';
 import uploadRouter from './routes/upload.js';
 import reportsRouter from './routes/reports.js';
+import chatsRouter from './routes/chats.js';
 
 // Import error handler & rate limit middlewares
 import errorHandler from './middleware/errorHandler.js';
@@ -58,6 +59,7 @@ app.use('/api/wishlist', wishlistRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/reports', reportsRouter);
+app.use('/api/chats', chatsRouter);
 
 // Base route ping check
 app.get('/ping', (req, res) => {
