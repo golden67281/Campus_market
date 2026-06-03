@@ -4,6 +4,7 @@ import { readTable, writeTable } from '../utils/db.js';
 import authMiddleware from '../middleware/authMiddleware.js';
 import { normalizeProduct, normalizeUser } from '../utils/imageHelper.js';
 import { upload } from '../middleware/uploadMiddleware.js';
+import { sendVerificationOTP } from '../utils/mailer.js';
 
 const router = express.Router();
 
@@ -153,40 +154,103 @@ router.put('/me/password', async (req, res, next) => {
   }
 });
 
-// 4. Verify College Email
-router.post('/verify-college-email', async (req, res, next) => {
+// 4a. Send OTP to College Email
+router.post('/send-verification-otp', async (req, res, next) => {
   try {
     const { email } = req.body;
     if (!email) {
       return res.status(400).json({ message: 'College email is required' });
     }
 
-    // Simple suffix check (.edu, .ac.in, .edu.in)
-    const isValidDomain = email.endsWith('.edu') || email.endsWith('.ac.in') || email.endsWith('.edu.in');
+    // Validate domain
+    const validDomains = ['.edu', '.ac.in', '.edu.in', '.ac.uk', '.edu.au'];
+    const isValidDomain = validDomains.some(d => email.toLowerCase().endsWith(d));
     if (!isValidDomain) {
-      return res.status(400).json({ message: 'Only official college emails (.edu, .ac.in) are supported for verification.' });
+      return res.status(400).json({
+        message: 'Only official college emails are accepted (.ac.in, .edu, .edu.in)'
+      });
+    }
+
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+      return res.status(503).json({
+        message: 'Email service not configured. Please contact support.'
+      });
     }
 
     const users = await readTable('users');
     const idx = users.findIndex(u => u._id === req.user._id);
+    if (idx === -1) return res.status(404).json({ message: 'User not found' });
 
-    if (idx === -1) {
-      return res.status(404).json({ message: 'User not found' });
+    // Generate 6-digit OTP
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 min
+
+    // Save OTP + pending email on user
+    users[idx].pendingCollegeEmail = email;
+    users[idx].collegeEmailOTP = otp;
+    users[idx].collegeEmailOTPExpiry = otpExpiry;
+    await writeTable('users', users);
+
+    // Send email
+    await sendVerificationOTP(email, otp, users[idx].name);
+
+    res.status(200).json({ message: `Verification code sent to ${email}` });
+  } catch (err) {
+    console.error('[OTP Send Error]', err.message);
+    next(err);
+  }
+});
+
+// 4b. Verify OTP and grant Verified Student badge
+router.post('/verify-college-otp', async (req, res, next) => {
+  try {
+    const { otp } = req.body;
+    if (!otp) return res.status(400).json({ message: 'OTP is required' });
+
+    const users = await readTable('users');
+    const idx = users.findIndex(u => u._id === req.user._id);
+    if (idx === -1) return res.status(404).json({ message: 'User not found' });
+
+    const user = users[idx];
+
+    if (!user.collegeEmailOTP) {
+      return res.status(400).json({ message: 'No verification code found. Please request a new one.' });
     }
 
-    users[idx].collegeEmail = email;
-    users[idx].collegeEmailVerified = true; // Auto-verify for simplicity in V1 Mock
+    // Check expiry
+    if (new Date() > new Date(user.collegeEmailOTPExpiry)) {
+      return res.status(400).json({ message: 'Verification code has expired. Please request a new one.' });
+    }
+
+    // Check OTP match
+    if (otp.trim() !== user.collegeEmailOTP) {
+      return res.status(400).json({ message: 'Incorrect code. Please check and try again.' });
+    }
+
+    // ✅ OTP correct — grant the badge
+    users[idx].collegeEmail = user.pendingCollegeEmail;
+    users[idx].collegeEmailVerified = true;
+
+    // Clear OTP fields
+    delete users[idx].collegeEmailOTP;
+    delete users[idx].collegeEmailOTPExpiry;
+    delete users[idx].pendingCollegeEmail;
 
     await writeTable('users', users);
 
-    const { password: _, ...userWithoutPassword } = users[idx];
+    const { password: _, securityAnswer: __, collegeEmailOTP: ___, ...clean } = users[idx];
     res.status(200).json({
-      message: 'Student status successfully verified! ✅',
-      user: normalizeUser(userWithoutPassword, req)
+      message: '🎓 Verified Student badge earned!',
+      user: normalizeUser(clean, req)
     });
   } catch (err) {
     next(err);
   }
+});
+
+// 4c. Legacy route kept for backward compatibility
+router.post('/verify-college-email', async (req, res) => {
+  res.status(410).json({ message: 'This endpoint is deprecated. Use /send-verification-otp and /verify-college-otp instead.' });
 });
 
 // 5. Get Current User's Listings

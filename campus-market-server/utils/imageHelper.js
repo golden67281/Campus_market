@@ -41,6 +41,10 @@ export function normalizeUser(user, req) {
   if (!user) return user;
 
   const normalized = { ...user };
+
+  // Map collegeEmailVerified → top-level verified so the client can use user.verified
+  normalized.verified = !!normalized.collegeEmailVerified;
+
   if (normalized.avatar) {
     const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
     let avatar = normalized.avatar;

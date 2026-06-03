@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getMe, updateProfile, changePassword } from '../api/userApi';
+import { getMe, updateProfile, changePassword, sendVerificationOTP, verifyCollegeOTP } from '../api/userApi';
 import useAuthStore from '../store/authStore';
 import Button from '../components/ui/Button';
 import PageWrapper from '../components/layout/PageWrapper';
@@ -20,6 +20,10 @@ export default function EditProfile() {
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [pwdLoading, setPwdLoading] = useState(false);
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpValue, setOtpValue] = useState('');
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
 
@@ -32,6 +36,7 @@ export default function EditProfile() {
         area: p.area || '', collegeEmail: p.collegeEmail || '',
       });
       setAvatarPreview(p.avatar || null);
+      setIsVerified(!!p.collegeEmailVerified);
     }).catch(() => {});
   }, []);
 
@@ -76,6 +81,31 @@ export default function EditProfile() {
       setPwdForm({ current: '', newPwd: '', confirm: '' });
     } catch (e) { toast.error(e.response?.data?.message || 'Failed to update password'); }
     finally { setPwdLoading(false); }
+  };
+
+  const handleSendOTP = async () => {
+    if (!form.collegeEmail) { toast.error('Enter your college email first'); return; }
+    setVerifyLoading(true);
+    try {
+      await sendVerificationOTP(form.collegeEmail);
+      setOtpSent(true);
+      setOtpValue('');
+      toast.success(`Code sent to ${form.collegeEmail}`);
+    } catch (e) { toast.error(e.response?.data?.message || 'Failed to send code'); }
+    finally { setVerifyLoading(false); }
+  };
+
+  const handleVerifyOTP = async () => {
+    if (!otpValue || otpValue.length !== 6) { toast.error('Enter the 6-digit code'); return; }
+    setVerifyLoading(true);
+    try {
+      const res = await verifyCollegeOTP(otpValue);
+      updateUser(res.data.user || res.data);
+      setIsVerified(true);
+      setOtpSent(false);
+      toast.success('🎓 Verified Student badge earned!');
+    } catch (e) { toast.error(e.response?.data?.message || 'Verification failed'); }
+    finally { setVerifyLoading(false); }
   };
 
   return (
@@ -130,9 +160,97 @@ export default function EditProfile() {
                 <label className="label">City</label>
                 <input className="input" value={form.city} onChange={(e) => set('city', e.target.value)} />
               </div>
+              {/* College Email Verification — 2-Step OTP Flow */}
               <div>
-                <label className="label">College Email <span className="font-normal text-gray-400">(for Verified badge)</span></label>
-                <input className="input" type="email" placeholder="you@college.ac.in" value={form.collegeEmail} onChange={(e) => set('collegeEmail', e.target.value)} />
+                <label className="label">College Email <span className="font-normal text-gray-400">(for Verified Student badge)</span></label>
+
+                {/* Already verified */}
+                {isVerified ? (
+                  <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-xl">
+                    <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                      <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M8 1.5L2.5 3.5V8c0 3.3 2.5 5.7 5.5 6.5C11 13.7 13.5 11.3 13.5 8V3.5L8 1.5Z" fill="#22c55e" fillOpacity="0.2" stroke="#22c55e" strokeWidth="1" />
+                        <path d="M5.5 8L7 9.5L10.5 6" stroke="#22c55e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-green-800">🎓 Verified Student</p>
+                      <p className="text-xs text-green-600 truncate">{form.collegeEmail}</p>
+                    </div>
+                    <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full font-semibold flex-shrink-0">Active ✓</span>
+                  </div>
+
+                /* Step 2: Enter OTP */
+                ) : otpSent ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 p-3 bg-indigo-50 border border-indigo-100 rounded-xl">
+                      <span className="text-indigo-500">📧</span>
+                      <p className="text-sm text-indigo-700">
+                        Code sent to <strong>{form.collegeEmail}</strong>. Check your inbox.
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        className="input flex-1 text-center text-2xl font-bold tracking-[0.5em] placeholder:text-sm placeholder:tracking-normal"
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        placeholder="_ _ _ _ _ _"
+                        value={otpValue}
+                        onChange={(e) => setOtpValue(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      />
+                      <Button
+                        variant="primary"
+                        onClick={handleVerifyOTP}
+                        loading={verifyLoading}
+                        className="flex-shrink-0"
+                      >
+                        Verify ✓
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-gray-400">⏱ Code expires in 10 minutes</p>
+                      <button
+                        type="button"
+                        className="text-xs text-indigo-600 hover:underline font-medium"
+                        onClick={() => { setOtpSent(false); setOtpValue(''); }}
+                      >
+                        ← Change email / Resend
+                      </button>
+                    </div>
+                  </div>
+
+                /* Step 1: Enter email */
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        className="input flex-1"
+                        type="email"
+                        placeholder="you@college.ac.in"
+                        value={form.collegeEmail}
+                        onChange={(e) => set('collegeEmail', e.target.value)}
+                      />
+                      <Button
+                        variant="primary"
+                        onClick={handleSendOTP}
+                        loading={verifyLoading}
+                        className="flex-shrink-0 whitespace-nowrap"
+                      >
+                        Send Code
+                      </Button>
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      Accepted: <code className="bg-gray-100 px-1 rounded">.ac.in</code> · <code className="bg-gray-100 px-1 rounded">.edu</code> · <code className="bg-gray-100 px-1 rounded">.edu.in</code>
+                    </p>
+                    <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-xl border border-amber-100">
+                      <span className="text-amber-500 flex-shrink-0">✉️</span>
+                      <p className="text-xs text-amber-800">
+                        Enter your official college email and click <strong>Send Code</strong>. We'll email you a 6-digit verification code.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="label">Year</label>

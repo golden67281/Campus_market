@@ -59,7 +59,7 @@ export default function Profile() {
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <h1 className="text-2xl font-bold text-gray-900">{p?.name}</h1>
-                    {p?.verified && <VerifiedBadge />}
+                    {(p?.verified || p?.collegeEmailVerified) && <VerifiedBadge />}
                   </div>
                   <p className="text-gray-500">@{p?.username}</p>
                   <div className="text-sm text-gray-500 space-y-0.5 mt-1">
@@ -91,11 +91,19 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* College email verification */}
-          {!p?.verified && (
-            <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between gap-4 flex-wrap">
-              <p className="text-sm text-gray-600">🎓 Verify your college email to get a <strong>Verified Student</strong> badge.</p>
-              <Link to="/profile/edit"><Button variant="secondary">Verify Now</Button></Link>
+          {/* College email verification nudge */}
+          {!(p?.verified || p?.collegeEmailVerified) && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-100 rounded-xl">
+                <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 text-lg">🎓</div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-indigo-900">Get your Verified Student badge</p>
+                  <p className="text-xs text-indigo-600 mt-0.5">Add your college email (.ac.in / .edu) and verify to earn the badge.</p>
+                </div>
+                <Link to="/profile/edit">
+                  <Button variant="primary" className="flex-shrink-0 text-sm">Verify Now →</Button>
+                </Link>
+              </div>
             </div>
           )}
         </div>
