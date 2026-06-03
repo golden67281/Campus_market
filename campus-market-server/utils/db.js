@@ -40,8 +40,8 @@ async function getDb() {
       console.log('🔌 Connecting to MongoDB database...');
       client = new MongoClient(uri);
       await client.connect();
-      db = client.db();
-      console.log('🍃 Successfully connected to MongoDB database!');
+      db = client.db('campus_market'); // Always use the campus_market database
+      console.log('🍃 Successfully connected to MongoDB → campus_market database!');
     }
     return db;
   } catch (error) {
