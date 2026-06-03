@@ -37,7 +37,28 @@ router.get('/me', async (req, res, next) => {
 
     const { password: _, ...userWithoutPassword } = user;
     const normalized = normalizeUser(userWithoutPassword, req);
-    res.status(200).json(normalized);
+
+    // Fetch and aggregate listings info dynamically
+    const products = await readTable('products');
+    const userProducts = products.filter(p => p.sellerId === user._id && p.status !== 'deleted');
+    const activeProducts = userProducts.filter(p => p.status === 'active');
+    const soldProducts = userProducts.filter(p => p.status === 'sold');
+
+    const listingCount = activeProducts.length;
+    const totalViews = userProducts.reduce((sum, p) => sum + (p.views || 0), 0);
+    const dealsCount = soldProducts.length;
+
+    const recentListings = activeProducts
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .map(p => normalizeProduct(p, req));
+
+    res.status(200).json({
+      ...normalized,
+      listingCount,
+      totalViews,
+      dealsCount,
+      recentListings
+    });
   } catch (err) {
     next(err);
   }
@@ -169,7 +190,28 @@ router.get('/:id', async (req, res, next) => {
     };
 
     const normalized = normalizeUser(publicProfile, req);
-    res.status(200).json(normalized);
+
+    // Fetch and aggregate listings info dynamically for public details
+    const products = await readTable('products');
+    const userProducts = products.filter(p => p.sellerId === user._id && p.status !== 'deleted');
+    const activeProducts = userProducts.filter(p => p.status === 'active');
+    const soldProducts = userProducts.filter(p => p.status === 'sold');
+
+    const listingCount = activeProducts.length;
+    const totalViews = userProducts.reduce((sum, p) => sum + (p.views || 0), 0);
+    const dealsCount = soldProducts.length;
+
+    const recentListings = activeProducts
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .map(p => normalizeProduct(p, req));
+
+    res.status(200).json({
+      ...normalized,
+      listingCount,
+      totalViews,
+      dealsCount,
+      recentListings
+    });
   } catch (err) {
     next(err);
   }

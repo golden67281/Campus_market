@@ -60,7 +60,7 @@ export default function EditProfile() {
       Object.entries(form).forEach(([k, v]) => fd.append(k, v));
       if (avatarFile) fd.append('avatar', avatarFile);
       const res = await updateProfile(fd);
-      updateUser(res.data);
+      updateUser(res.data.user || res.data);
       toast.success('✅ Profile saved');
       navigate('/profile');
     } catch (e) { toast.error(e.response?.data?.message || 'Failed to save'); }
