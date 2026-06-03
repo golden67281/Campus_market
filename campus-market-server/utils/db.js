@@ -15,38 +15,69 @@ const writeQueue = {};
 // In-memory cache for tables: tableName -> array of records (JSON fallback)
 const dbCache = {};
 
-let client = null;
-let db = null;
-let connectionAttempted = false;
+let mongoClient = null;
+let mongoDb = null;
+let isConnecting = false;
+let connectionFailed = false;
 
 /**
  * Retrieves the MongoDB database instance if MONGODB_URI is provided.
- * Reuses the connection across subsequent calls.
+ * Handles retries and reconnection automatically.
  */
 async function getDb() {
-  if (db) return db;
-  
   const uri = process.env.MONGODB_URI;
   if (!uri) {
-    if (!connectionAttempted) {
-      console.log('ℹ️ MONGODB_URI not found in environment. Running in local JSON flat-file mode.');
-      connectionAttempted = true;
-    }
     return null;
   }
 
+  // Return existing connection if healthy
+  if (mongoDb && mongoClient) {
+    return mongoDb;
+  }
+
+  // Prevent multiple simultaneous connection attempts
+  if (isConnecting) {
+    // Wait for existing connection attempt
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    return mongoDb;
+  }
+
+  isConnecting = true;
+
   try {
-    if (!client) {
-      console.log('🔌 Connecting to MongoDB database...');
-      client = new MongoClient(uri);
-      await client.connect();
-      db = client.db('campus_market'); // Always use the campus_market database
-      console.log('🍃 Successfully connected to MongoDB → campus_market database!');
+    console.log('🔌 Connecting to MongoDB Atlas → campus_market...');
+
+    // Close any stale client
+    if (mongoClient) {
+      try { await mongoClient.close(); } catch (_) {}
+      mongoClient = null;
+      mongoDb = null;
     }
-    return db;
+
+    mongoClient = new MongoClient(uri, {
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+      socketTimeoutMS: 30000,
+    });
+
+    await mongoClient.connect();
+    mongoDb = mongoClient.db('campus_market');
+
+    // Verify connection with a ping
+    await mongoDb.command({ ping: 1 });
+
+    connectionFailed = false;
+    console.log('🍃 Successfully connected to MongoDB → campus_market database!');
+    return mongoDb;
+
   } catch (error) {
-    console.error('❌ Failed to connect to MongoDB. Falling back to local JSON files. Error:', error.message);
+    console.error('❌ MongoDB connection failed:', error.message);
+    connectionFailed = true;
+    mongoClient = null;
+    mongoDb = null;
     return null;
+  } finally {
+    isConnecting = false;
   }
 }
 
@@ -64,37 +95,44 @@ async function ensureDir(dir) {
  * Includes auto-migration to copy local JSON data to empty MongoDB collections.
  */
 export async function readTable(tableName) {
-  const mongoDb = await getDb();
-  if (mongoDb) {
+  const db = await getDb();
+  if (db) {
     try {
-      const collection = mongoDb.collection(tableName);
-      const data = await collection.find({}).toArray();
+      const collection = db.collection(tableName);
+      const data = await collection.find({}, { projection: { _id: 0 } }).toArray();
 
-      // Auto-Migration: If MongoDB collection is empty, check if we can migrate local JSON data
+      // Auto-Migration: If MongoDB collection is empty, migrate local JSON data
       if (data.length === 0) {
         const pathsToTry = [
           path.join(DATA_DIR, `${tableName}.json`),
-          path.join(__dirname, '..', 'data', `${tableName}.json`) // fallback to repo default directory
+          path.join(__dirname, '..', 'data', `${tableName}.json`)
         ];
         for (const filePath of pathsToTry) {
           try {
             const content = await fs.readFile(filePath, 'utf8');
             const jsonData = JSON.parse(content || '[]');
             if (jsonData.length > 0) {
-              console.log(`📦 [Auto-Migration] Seeding empty MongoDB collection '${tableName}' from file: ${filePath}`);
+              console.log(`📦 [Auto-Migration] Seeding MongoDB '${tableName}' from: ${filePath}`);
               await writeTable(tableName, jsonData);
               return [...jsonData];
             }
-          } catch (jsonErr) {
+          } catch (_) {
             // Try next path
           }
         }
       }
 
-      return data;
+      // Re-map _id from MongoDB if needed
+      return data.map(doc => {
+        const { _id: mongoId, ...rest } = doc;
+        return mongoId ? doc : rest;
+      });
+
     } catch (err) {
-      console.error(`❌ MongoDB read error on table '${tableName}':`, err.message);
-      // Fall through to JSON file fallback if MongoDB fails
+      console.error(`❌ MongoDB read error on '${tableName}':`, err.message);
+      // Reset connection so next call retries
+      mongoDb = null;
+      mongoClient = null;
     }
   }
 
@@ -122,38 +160,38 @@ export async function readTable(tableName) {
 
 /**
  * Writes data to a table.
- * If MongoDB is connected, performs an upsert sync to insert/update modified documents
- * and delete removed documents.
+ * If MongoDB is connected, performs an upsert sync to insert/update modified documents.
  */
 export async function writeTable(tableName, data) {
-  // Update memory cache for JSON fallback
+  // Update memory cache
   dbCache[tableName] = data;
 
-  const mongoDb = await getDb();
-  if (mongoDb) {
+  const db = await getDb();
+  if (db) {
     try {
-      const collection = mongoDb.collection(tableName);
+      const collection = db.collection(tableName);
 
       if (data.length === 0) {
         await collection.deleteMany({});
         return;
       }
 
-      // Synchronize in-memory array with MongoDB using bulk operations
+      // Use _id field as document ID for MongoDB
       const bulkOps = [];
       const newIds = new Set(data.map(item => item._id));
 
       for (const item of data) {
+        const { _id, ...rest } = item;
         bulkOps.push({
           replaceOne: {
-            filter: { _id: item._id },
-            replacement: item,
+            filter: { _id: _id },
+            replacement: { _id, ...rest },
             upsert: true
           }
         });
       }
 
-      // Delete items that are no longer in the list
+      // Delete removed documents
       bulkOps.push({
         deleteMany: {
           filter: { _id: { $nin: Array.from(newIds) } }
@@ -162,9 +200,12 @@ export async function writeTable(tableName, data) {
 
       await collection.bulkWrite(bulkOps);
       return;
+
     } catch (err) {
-      console.error(`❌ MongoDB write error on table '${tableName}':`, err.message);
-      // Fall through to JSON file write if MongoDB fails
+      console.error(`❌ MongoDB write error on '${tableName}':`, err.message);
+      // Reset connection so next call retries
+      mongoDb = null;
+      mongoClient = null;
     }
   }
 
