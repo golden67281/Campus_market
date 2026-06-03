@@ -25,8 +25,9 @@ router.post('/image', upload.single('image'), async (req, res) => {
       url
     });
   } catch (err) {
-    console.error('[Image Upload Error]', err.message);
-    res.status(500).json({ message: 'Failed to upload image. Please try again.' });
+    console.error('[Image Upload Error - Full]', JSON.stringify(err));
+    const detail = err?.message || err?.error?.message || 'Unknown error';
+    res.status(500).json({ message: `Failed to upload image: ${detail}` });
   }
 });
 
