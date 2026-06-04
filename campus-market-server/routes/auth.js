@@ -98,8 +98,13 @@ router.post('/send-signup-email-otp', async (req, res, next) => {
     const expiry = Date.now() + 10 * 60 * 1000;
     signupOtpStore.set(email.toLowerCase(), { otp, expiry });
 
-    await sendVerificationOTP(email, otp, name || 'Student');
+    // ✅ Respond instantly — don't wait for SMTP
     res.status(200).json({ message: `Verification code sent to ${email}` });
+
+    // Send email in background (non-blocking)
+    sendVerificationOTP(email, otp, name || 'Student')
+      .catch(err => console.error('[Signup OTP Email Background Error]', err.message));
+
   } catch (err) {
     console.error('[Signup Email OTP Error]', err.message);
     next(err);

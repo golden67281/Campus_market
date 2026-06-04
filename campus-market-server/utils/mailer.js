@@ -1,37 +1,55 @@
 import nodemailer from 'nodemailer';
 
 /**
- * Creates a Gmail SMTP transporter using App Password credentials.
- * Set GMAIL_USER and GMAIL_APP_PASSWORD in your environment variables.
- *
- * How to get Gmail App Password (free):
- * 1. Enable 2FA on your Google account
- * 2. Go to myaccount.google.com → Security → App Passwords
- * 3. Generate a password for "Mail" → copy the 16-char code
- * 4. Set it as GMAIL_APP_PASSWORD in your .env / Render env vars
+ * Singleton persistent SMTP transporter with connection pooling.
+ * Created ONCE when the server starts — reused for every email.
+ * This eliminates the ~2-3s handshake delay on each OTP request.
  */
-function createTransporter() {
-  return nodemailer.createTransport({
+let _transporter = null;
+
+function getTransporter() {
+  if (_transporter) return _transporter;
+
+  _transporter = nodemailer.createTransport({
     service: 'gmail',
+    pool: true,          // Keep TCP connection alive — reuse for multiple emails
+    maxConnections: 5,   // Up to 5 parallel SMTP connections
+    maxMessages: 100,    // Reuse each connection for up to 100 messages
     auth: {
       user: process.env.GMAIL_USER,
       pass: process.env.GMAIL_APP_PASSWORD,
     },
+    // Faster socket timeouts
+    connectionTimeout: 5000,
+    greetingTimeout: 5000,
+    socketTimeout: 10000,
   });
+
+  // Warm up the connection immediately on first call
+  _transporter.verify((err) => {
+    if (err) {
+      console.error('[Mailer] SMTP verify failed:', err.message);
+      _transporter = null; // Reset so next call retries
+    } else {
+      console.log('[Mailer] ✅ SMTP pool ready — emails will be fast!');
+    }
+  });
+
+  return _transporter;
+}
+
+// Pre-warm the connection when the module is first imported
+// This way the connection is ready before the first OTP request
+if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+  getTransporter();
 }
 
 /**
- * Sends a styled OTP verification email to the given address.
+ * Builds the OTP email HTML — extracted so it runs synchronously
+ * before the async sendMail call.
  */
-export async function sendVerificationOTP(toEmail, otp, userName = 'Student') {
-  const transporter = createTransporter();
-
-  const mailOptions = {
-    from: `"Campus Market 🎓" <${process.env.GMAIL_USER}>`,
-    to: toEmail,
-    subject: `${otp} — Your Campus Market Verification Code`,
-    html: `
-<!DOCTYPE html>
+function buildOtpHtml(otp, userName) {
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -47,7 +65,7 @@ export async function sendVerificationOTP(toEmail, otp, userName = 'Student') {
           <!-- Header -->
           <tr>
             <td style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:36px 40px;text-align:center;">
-              <div style="font-size:40px;margin-bottom:8px;">🎓</div>
+              <div style="font-size:40px;margin-bottom:8px;">&#127891;</div>
               <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">Campus Market</h1>
               <p style="margin:6px 0 0;color:#c7d2fe;font-size:13px;">Student Email Verification</p>
             </td>
@@ -66,12 +84,12 @@ export async function sendVerificationOTP(toEmail, otp, userName = 'Student') {
               <div style="background:linear-gradient(135deg,#eef2ff,#ede9fe);border:2px solid #c7d2fe;border-radius:16px;padding:28px;text-align:center;margin-bottom:28px;">
                 <p style="margin:0 0 8px;color:#6366f1;font-size:12px;font-weight:700;letter-spacing:3px;text-transform:uppercase;">Verification Code</p>
                 <div style="font-size:44px;font-weight:900;letter-spacing:10px;color:#4338ca;font-family:'Courier New',monospace;">${otp}</div>
-                <p style="margin:12px 0 0;color:#7c3aed;font-size:12px;">⏱ Expires in <strong>10 minutes</strong></p>
+                <p style="margin:12px 0 0;color:#7c3aed;font-size:12px;">&#9201; Expires in <strong>10 minutes</strong></p>
               </div>
 
               <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:12px;padding:14px 18px;margin-bottom:24px;">
                 <p style="margin:0;color:#92400e;font-size:13px;">
-                  🔒 <strong>Never share this code.</strong> Campus Market will never ask for it via call or chat.
+                  &#128274; <strong>Never share this code.</strong> Campus Market will never ask for it via call or chat.
                 </p>
               </div>
 
@@ -84,7 +102,7 @@ export async function sendVerificationOTP(toEmail, otp, userName = 'Student') {
           <!-- Footer -->
           <tr>
             <td style="background:#f8fafc;padding:20px 40px;border-top:1px solid #f1f5f9;text-align:center;">
-              <p style="margin:0;color:#9ca3af;font-size:12px;">© ${new Date().getFullYear()} Campus Market · Built for Indian Students 🇮🇳</p>
+              <p style="margin:0;color:#9ca3af;font-size:12px;">&#169; ${new Date().getFullYear()} Campus Market &middot; Built for Indian Students &#127470;&#127475;</p>
             </td>
           </tr>
 
@@ -93,7 +111,21 @@ export async function sendVerificationOTP(toEmail, otp, userName = 'Student') {
     </tr>
   </table>
 </body>
-</html>`,
+</html>`;
+}
+
+/**
+ * Sends a styled OTP verification email.
+ * Uses the persistent pooled transporter for fast delivery.
+ */
+export async function sendVerificationOTP(toEmail, otp, userName = 'Student') {
+  const transporter = getTransporter();
+
+  const mailOptions = {
+    from: `"Campus Market" <${process.env.GMAIL_USER}>`,
+    to: toEmail,
+    subject: `${otp} — Your Campus Market Verification Code`,
+    html: buildOtpHtml(otp, userName),
   };
 
   await transporter.sendMail(mailOptions);

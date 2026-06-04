@@ -192,16 +192,19 @@ router.post('/send-verification-otp', async (req, res, next) => {
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 min
 
-    // Save OTP + pending email on user
+    // Save OTP to DB first
     users[idx].pendingCollegeEmail = email;
     users[idx].collegeEmailOTP = otp;
     users[idx].collegeEmailOTPExpiry = otpExpiry;
     await writeTable('users', users);
 
-    // Send email
-    await sendVerificationOTP(email, otp, users[idx].name);
-
+    // ✅ Respond instantly — don't wait for SMTP
     res.status(200).json({ message: `Verification code sent to ${email}` });
+
+    // Send email in background (non-blocking)
+    sendVerificationOTP(email, otp, users[idx].name)
+      .catch(err => console.error('[OTP Email Background Error]', err.message));
+
   } catch (err) {
     console.error('[OTP Send Error]', err.message);
     next(err);
