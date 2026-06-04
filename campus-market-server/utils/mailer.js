@@ -11,18 +11,22 @@ function getTransporter() {
   if (_transporter) return _transporter;
 
   _transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,           // Port 587 (STARTTLS) — works on Render free tier
+    secure: false,       // false = STARTTLS (upgrades after connect), NOT port 465
     pool: true,          // Keep TCP connection alive — reuse for multiple emails
-    maxConnections: 5,   // Up to 5 parallel SMTP connections
-    maxMessages: 100,    // Reuse each connection for up to 100 messages
+    maxConnections: 3,
+    maxMessages: 50,
     auth: {
       user: process.env.GMAIL_USER,
       pass: process.env.GMAIL_APP_PASSWORD,
     },
-    // Faster socket timeouts
-    connectionTimeout: 5000,
-    greetingTimeout: 5000,
-    socketTimeout: 10000,
+    tls: {
+      rejectUnauthorized: false, // Allow self-signed certs on some networks
+    },
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 15000,
   });
 
   // Warm up the connection immediately on first call
@@ -31,7 +35,7 @@ function getTransporter() {
       console.error('[Mailer] SMTP verify failed:', err.message);
       _transporter = null; // Reset so next call retries
     } else {
-      console.log('[Mailer] ✅ SMTP pool ready — emails will be fast!');
+      console.log('[Mailer] ✅ SMTP pool ready on port 587 — emails will be fast!');
     }
   });
 
