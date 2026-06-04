@@ -1,11 +1,12 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Suspense, lazy } from 'react';
+import { useState, Suspense, lazy } from 'react';
 import { Toaster } from 'react-hot-toast';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Navbar from './components/layout/Navbar';
 import BottomTabBar from './components/layout/BottomTabBar';
 import Footer from './components/layout/Footer';
 import Spinner from './components/ui/Spinner';
+import SplashIntro from './components/common/SplashIntro';
 
 // Lazy-loaded pages for code-splitting
 const Landing       = lazy(() => import('./pages/Landing'));
@@ -36,8 +37,13 @@ function PageLoader() {
 }
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(() => {
+    return !sessionStorage.getItem('hasSeenSplash');
+  });
+
   return (
     <BrowserRouter>
+      {showSplash && <SplashIntro onComplete={() => setShowSplash(false)} />}
       <div className="flex flex-col min-h-screen">
         <Navbar />
         <Toaster

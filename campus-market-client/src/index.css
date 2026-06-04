@@ -81,3 +81,18 @@
     @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600;
   }
 }
+
+/* Splash Intro Keyframes */
+@keyframes caretBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes fadeOutSplash {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(1.02); }
+}
+
+.animate-fade-out-splash {
+  animation: fadeOutSplash 0.55s ease forwards;
+}
