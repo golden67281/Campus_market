@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Eye, EyeOff, MapPin, CheckCircle, XCircle } from 'lucide-react';
+import { Eye, EyeOff, MapPin, CheckCircle, XCircle, Mail, ShieldCheck } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import { signup, checkMobile } from '../api/authApi';
-import { checkUsername } from '../api/userApi';
+import { checkUsername, sendSignupEmailOTP, verifySignupEmailOTP } from '../api/userApi';
 import StepProgressBar from '../components/forms/StepProgressBar';
 import Button from '../components/ui/Button';
 import PageWrapper from '../components/layout/PageWrapper';
@@ -41,6 +41,13 @@ export default function Signup() {
     area: '', lat: null, lng: null, password: '', confirmPassword: '',
     securityQuestion: '', securityAnswer: '',
   });
+
+  // Email OTP state for Step 3
+  const [emailOtpSent, setEmailOtpSent] = useState(false);
+  const [emailOtpValue, setEmailOtpValue] = useState('');
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [emailOtpLoading, setEmailOtpLoading] = useState(false);
+
   const [usernameStatus, setUsernameStatus] = useState(null); // 'checking' | 'ok' | 'taken'
   const [collegeSearch, setCollegeSearch] = useState('');
   const [showCollegeList, setShowCollegeList] = useState(false);
@@ -67,7 +74,6 @@ export default function Signup() {
         toast.error('Mobile number is already registered. Please log in.');
       }
     } catch (e) {
-      console.error(e);
       toast.error(e.response?.data?.message || 'Verification failed. Try again.');
     } finally {
       setMobileLoading(false);
@@ -104,6 +110,37 @@ export default function Signup() {
     } catch { toast.error('Could not detect location.'); }
   };
 
+  // Email OTP handlers
+  const handleSendEmailOTP = async () => {
+    if (!form.collegeEmail) { toast.error('Enter your college email first'); return; }
+    setEmailOtpLoading(true);
+    try {
+      await sendSignupEmailOTP(form.collegeEmail, form.name);
+      setEmailOtpSent(true);
+      setEmailOtpValue('');
+      toast.success(`Verification code sent to ${form.collegeEmail}`);
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Failed to send code');
+    } finally {
+      setEmailOtpLoading(false);
+    }
+  };
+
+  const handleVerifyEmailOTP = async () => {
+    if (!emailOtpValue || emailOtpValue.length !== 6) { toast.error('Enter the 6-digit code'); return; }
+    setEmailOtpLoading(true);
+    try {
+      await verifySignupEmailOTP(form.collegeEmail, emailOtpValue);
+      setEmailVerified(true);
+      setEmailOtpSent(false);
+      toast.success('🎓 College email verified!');
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Incorrect code. Please try again.');
+    } finally {
+      setEmailOtpLoading(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (form.password !== form.confirmPassword) { toast.error('Passwords do not match'); return; }
     if (strength < 2) { toast.error('Please use a stronger password'); return; }
@@ -119,6 +156,10 @@ export default function Signup() {
           }
         }
       });
+      // Send verified email flag so server can store it
+      if (emailVerified) {
+        payload.set('collegeEmailVerified', 'true');
+      }
       const res = await signup(payload);
       setAuth(res.data.user, res.data.token);
       toast.success('Welcome to Campus Market! 🎉');
@@ -205,7 +246,7 @@ export default function Signup() {
             </div>
           )}
 
-          {/* STEP 3: College Details */}
+          {/* STEP 3: College Details + Email Verification */}
           {step === 3 && (
             <div className="space-y-4">
               <div className="relative">
@@ -232,10 +273,105 @@ export default function Signup() {
                 <label className="label">City</label>
                 <input className="input" placeholder="e.g. Ahmedabad" value={form.city} onChange={(e) => set('city', e.target.value)} />
               </div>
+
+              {/* College Email OTP Verification */}
               <div>
-                <label className="label">College Email <span className="text-gray-400 font-normal">(optional — earns Verified badge)</span></label>
-                <input className="input" type="email" placeholder="you@college.ac.in" value={form.collegeEmail} onChange={(e) => set('collegeEmail', e.target.value)} />
+                <label className="label flex items-center gap-2">
+                  College Email
+                  <span className="text-gray-400 font-normal text-xs">(verify to earn the Verified Student badge)</span>
+                </label>
+
+                {/* Already verified */}
+                {emailVerified ? (
+                  <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl">
+                    <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                      <ShieldCheck size={18} className="text-green-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-green-800">🎓 Verified Student!</p>
+                      <p className="text-xs text-green-600 truncate">{form.collegeEmail}</p>
+                    </div>
+                    <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full font-semibold flex-shrink-0">✓ Done</span>
+                  </div>
+
+                ) : emailOtpSent ? (
+                  /* Step 2: Enter OTP */
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 p-3 bg-indigo-50 border border-indigo-100 rounded-xl">
+                      <Mail size={16} className="text-indigo-500 flex-shrink-0" />
+                      <p className="text-sm text-indigo-700">
+                        Code sent to <strong>{form.collegeEmail}</strong>. Check your inbox.
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        className="input flex-1 text-center text-2xl font-bold tracking-[0.5em] placeholder:text-sm placeholder:tracking-normal"
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        placeholder="______"
+                        value={emailOtpValue}
+                        onChange={(e) => setEmailOtpValue(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      />
+                      <Button
+                        variant="primary"
+                        onClick={handleVerifyEmailOTP}
+                        loading={emailOtpLoading}
+                        className="flex-shrink-0"
+                      >
+                        Verify ✓
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-gray-400">⏱ Code expires in 10 minutes</p>
+                      <button
+                        type="button"
+                        className="text-xs text-indigo-600 hover:underline font-medium"
+                        onClick={() => { setEmailOtpSent(false); setEmailOtpValue(''); }}
+                      >
+                        ← Change email / Resend
+                      </button>
+                    </div>
+                  </div>
+
+                ) : (
+                  /* Step 1: Enter email and send OTP */
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        className="input flex-1"
+                        type="email"
+                        placeholder="you@college.ac.in"
+                        value={form.collegeEmail}
+                        onChange={(e) => { set('collegeEmail', e.target.value); setEmailVerified(false); }}
+                      />
+                      <Button
+                        variant="primary"
+                        onClick={handleSendEmailOTP}
+                        loading={emailOtpLoading}
+                        className="flex-shrink-0 whitespace-nowrap"
+                        disabled={!form.collegeEmail}
+                      >
+                        Send Code
+                      </Button>
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      Accepted: <code className="bg-gray-100 px-1 rounded">.ac.in</code> · <code className="bg-gray-100 px-1 rounded">.edu</code> · <code className="bg-gray-100 px-1 rounded">.edu.in</code>
+                    </p>
+                    {!form.collegeEmail && (
+                      <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-xl border border-amber-100">
+                        <span className="text-amber-500 flex-shrink-0">✉️</span>
+                        <p className="text-xs text-amber-800">
+                          Enter your official college email and click <strong>Send Code</strong> to get the <strong>Verified Student</strong> badge.
+                          <br />
+                          <span className="text-amber-600">You can also skip this and verify later from your profile.</span>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
+
               <div>
                 <label className="label">Current Year</label>
                 <select className="input" value={form.year} onChange={(e) => set('year', e.target.value)}>

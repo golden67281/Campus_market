@@ -17,7 +17,7 @@ export default function SellerCard({ seller }) {
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-semibold text-gray-900">{seller.name}</p>
-            {seller.verified && <VerifiedBadge />}
+            {(seller.collegeEmailVerified || seller.verified) && <VerifiedBadge />}
           </div>
           <p className="text-sm text-gray-500">{seller.college}</p>
           <p className="text-xs text-gray-400">Member since {formatDate(seller.createdAt)}</p>

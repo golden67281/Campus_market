@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { readTable, writeTable, generateId } from '../utils/db.js';
 import { upload } from '../middleware/uploadMiddleware.js';
 import { uploadAvatarToCloudinary } from '../utils/cloudinary.js';
+import { sendVerificationOTP } from '../utils/mailer.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'campus_market_super_secure_secret_token_key_123';
@@ -73,6 +74,56 @@ router.post('/send-otp', (req, res) => {
 router.post('/verify-otp', (req, res) => {
   res.status(200).json({ message: 'OTP verification bypassed securely.' });
 });
+
+// Public: Send signup-time college email OTP (no auth required)
+// Stores OTP in a temporary in-memory map keyed by email (valid 10 min)
+const signupOtpStore = new Map(); // email -> { otp, expiry, name }
+
+router.post('/send-signup-email-otp', async (req, res, next) => {
+  try {
+    const { email, name } = req.body;
+    if (!email) return res.status(400).json({ message: 'College email is required' });
+
+    const validDomains = ['.edu', '.ac.in', '.edu.in', '.ac.uk', '.edu.au'];
+    const isValid = validDomains.some(d => email.toLowerCase().endsWith(d));
+    if (!isValid) {
+      return res.status(400).json({ message: 'Only official college emails are accepted (.ac.in, .edu, .edu.in)' });
+    }
+
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+      return res.status(503).json({ message: 'Email service not configured. You can verify after signup.' });
+    }
+
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const expiry = Date.now() + 10 * 60 * 1000;
+    signupOtpStore.set(email.toLowerCase(), { otp, expiry });
+
+    await sendVerificationOTP(email, otp, name || 'Student');
+    res.status(200).json({ message: `Verification code sent to ${email}` });
+  } catch (err) {
+    console.error('[Signup Email OTP Error]', err.message);
+    next(err);
+  }
+});
+
+// Public: Verify signup-time college email OTP
+router.post('/verify-signup-email-otp', (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) return res.status(400).json({ message: 'Email and OTP are required' });
+
+  const entry = signupOtpStore.get(email.toLowerCase());
+  if (!entry) return res.status(400).json({ message: 'No verification code found. Please request a new one.' });
+  if (Date.now() > entry.expiry) {
+    signupOtpStore.delete(email.toLowerCase());
+    return res.status(400).json({ message: 'Verification code has expired. Please request a new one.' });
+  }
+  if (otp.trim() !== entry.otp) {
+    return res.status(400).json({ message: 'Incorrect code. Please check and try again.' });
+  }
+
+  signupOtpStore.delete(email.toLowerCase());
+  res.status(200).json({ message: 'Email verified successfully!' });
+});
 router.post('/forgot-password', async (req, res, next) => {
   try {
     const { mobile } = req.body;
@@ -92,7 +143,8 @@ router.post('/forgot-password', async (req, res, next) => {
 router.post('/signup', upload.single('avatar'), async (req, res, next) => {
   try {
     const {
-      name, username, mobile, college, city, collegeEmail, year, department, area, lat, lng, password, securityQuestion, securityAnswer
+      name, username, mobile, college, city, collegeEmail, collegeEmailVerified: verifiedFlag,
+      year, department, area, lat, lng, password, securityQuestion, securityAnswer
     } = req.body;
 
     if (!name || !username || !mobile || !college || !password || !securityQuestion || !securityAnswer) {
@@ -132,8 +184,9 @@ router.post('/signup', upload.single('avatar'), async (req, res, next) => {
       username: username.toLowerCase(),
       mobile: normalizedMobile,
       email: null,
-      collegeEmail: collegeEmail || null,
-      collegeEmailVerified: !!collegeEmail, 
+      // Store college email only if it was verified via OTP during signup
+      collegeEmail: (verifiedFlag === 'true' && collegeEmail) ? collegeEmail : null,
+      collegeEmailVerified: verifiedFlag === 'true' && !!collegeEmail,
       college,
       collegeCity: city || '',
       year: year || '',
