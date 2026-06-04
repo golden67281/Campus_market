@@ -79,7 +79,8 @@ router.put('/me', upload.single('avatar'), async (req, res, next) => {
     }
 
     // WHITELIST: Only allow safe profile fields to be updated
-    const allowedFields = ['name', 'username', 'college', 'city', 'year', 'department', 'area', 'collegeEmail', 'lat', 'lng'];
+    // Note: collegeEmail is intentionally excluded — it can only be changed via the OTP verification flow
+    const allowedFields = ['name', 'username', 'college', 'city', 'year', 'department', 'area', 'lat', 'lng'];
     const rawUpdates = req.body;
     const updates = {};
 
@@ -92,7 +93,7 @@ router.put('/me', upload.single('avatar'), async (req, res, next) => {
       }
     });
 
-    // Check if college has changed: resetting verification badge
+    // Check if college has changed: reset the verification badge
     if (updates.college && updates.college !== users[idx].college) {
       users[idx].collegeEmailVerified = false;
       users[idx].collegeEmail = null;

@@ -223,7 +223,7 @@ router.post('/', async (req, res, next) => {
     // Create Notification for the receiver
     const notifications = await readTable('notifications');
     const sender = users.find((u) => u._id === senderId);
-    const senderName = sender ? sender.name : (req.user.username || 'A student');
+    const senderName = sender?.name || sender?.username || req.user?.name || req.user?.username || 'A student';
 
     notifications.push({
       _id: generateId('n'),

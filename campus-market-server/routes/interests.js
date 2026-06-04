@@ -19,6 +19,7 @@ router.post('/', async (req, res, next) => {
     }
 
     const products = await readTable('products');
+    const users = await readTable('users');
     const productIdx = products.findIndex(p => p._id === productId);
 
     if (productIdx === -1 || products[productIdx].status === 'deleted') {
@@ -37,11 +38,15 @@ router.post('/', async (req, res, next) => {
     // Check if interest is already expressed
     let existing = interests.find(i => i.productId === productId && i.buyerId === buyerId);
     if (!existing) {
+      // Look up buyer's real name from users table
+      const buyerUser = users.find(u => u._id === buyerId);
+      const resolvedBuyerName = buyerName || buyerUser?.name || buyerUser?.username || 'A student';
+
       existing = {
         _id: generateId('i'),
         productId,
         buyerId,
-        buyerName: buyerName || req.user.username,
+        buyerName: resolvedBuyerName,
         buyerPhone: buyerPhone || '',
         buyerArea: buyerArea || '',
         message: message || '',
@@ -62,7 +67,7 @@ router.post('/', async (req, res, next) => {
         _id: generateId('n'),
         userId: product.sellerId,
         type: 'buyer_interest',
-        title: `${buyerName || 'A student'} is interested in your ${product.title}`,
+        title: `${resolvedBuyerName} is interested in your ${product.title}`,
         body: message || 'Is this still available?',
         relatedProductId: productId,
         relatedUserId: buyerId,
