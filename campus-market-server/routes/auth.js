@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { readTable, writeTable, generateId } from '../utils/db.js';
 import { upload } from '../middleware/uploadMiddleware.js';
 import { uploadAvatarToCloudinary } from '../utils/cloudinary.js';
-import { sendVerificationOTP } from '../utils/mailer.js';
+import { sendVerificationOTP, isMailerConfigured } from '../utils/mailer.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'campus_market_super_secure_secret_token_key_123';
@@ -90,7 +90,7 @@ router.post('/send-signup-email-otp', async (req, res, next) => {
       return res.status(400).json({ message: 'Only official college emails are accepted (.ac.in, .edu, .edu.in)' });
     }
 
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    if (!isMailerConfigured()) {
       return res.status(503).json({ message: 'Email service not configured. You can verify after signup.' });
     }
 

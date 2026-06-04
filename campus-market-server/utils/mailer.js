@@ -1,6 +1,15 @@
 import nodemailer from 'nodemailer';
 
 /**
+ * Checks if the mailer configuration environment variables are present.
+ */
+export function isMailerConfigured() {
+  const hasGmail = !!(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD);
+  const hasSmtp = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+  return hasGmail || hasSmtp;
+}
+
+/**
  * Singleton persistent SMTP transporter with connection pooling.
  * Created ONCE when the server starts — reused for every email.
  * This eliminates the ~2-3s handshake delay on each OTP request.
@@ -10,24 +19,51 @@ let _transporter = null;
 function getTransporter() {
   if (_transporter) return _transporter;
 
-  _transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,           // Port 587 (STARTTLS) — works on Render free tier
-    secure: false,       // false = STARTTLS (upgrades after connect), NOT port 465
-    pool: true,          // Keep TCP connection alive — reuse for multiple emails
-    maxConnections: 3,
-    maxMessages: 50,
-    auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
-    },
-    tls: {
-      rejectUnauthorized: false, // Allow self-signed certs on some networks
-    },
-    connectionTimeout: 8000,
-    greetingTimeout: 8000,
-    socketTimeout: 15000,
-  });
+  if (process.env.SMTP_HOST) {
+    const port = parseInt(process.env.SMTP_PORT || '2525', 10);
+    console.log(`[Mailer] Initializing custom SMTP transporter on ${process.env.SMTP_HOST}:${port}...`);
+    _transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: port,
+      secure: port === 465, // true for 465, false for other ports (like 2525 or 587)
+      pool: true,
+      maxConnections: 3,
+      maxMessages: 50,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+    });
+  } else if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+    console.log('[Mailer] Initializing default Gmail SMTP transporter on port 587...');
+    _transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false, // STARTTLS
+      pool: true,
+      maxConnections: 3,
+      maxMessages: 50,
+      auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_APP_PASSWORD,
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+    });
+  } else {
+    console.error('[Mailer] No email service configured. Specify SMTP_* or GMAIL_* environment variables.');
+    return null;
+  }
 
   // Warm up the connection immediately on first call
   _transporter.verify((err) => {
@@ -35,7 +71,7 @@ function getTransporter() {
       console.error('[Mailer] SMTP verify failed:', err.message);
       _transporter = null; // Reset so next call retries
     } else {
-      console.log('[Mailer] ✅ SMTP pool ready on port 587 — emails will be fast!');
+      console.log(`[Mailer] ✅ SMTP pool ready!`);
     }
   });
 
@@ -43,8 +79,7 @@ function getTransporter() {
 }
 
 // Pre-warm the connection when the module is first imported
-// This way the connection is ready before the first OTP request
-if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+if (isMailerConfigured()) {
   getTransporter();
 }
 
@@ -124,9 +159,13 @@ function buildOtpHtml(otp, userName) {
  */
 export async function sendVerificationOTP(toEmail, otp, userName = 'Student') {
   const transporter = getTransporter();
+  if (!transporter) {
+    throw new Error('Mailer transporter not initialized');
+  }
 
+  const senderEmail = process.env.SMTP_SENDER || process.env.SMTP_USER || process.env.GMAIL_USER;
   const mailOptions = {
-    from: `"Campus Market" <${process.env.GMAIL_USER}>`,
+    from: `"Campus Market" <${senderEmail}>`,
     to: toEmail,
     subject: `${otp} — Your Campus Market Verification Code`,
     html: buildOtpHtml(otp, userName),

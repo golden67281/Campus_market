@@ -4,7 +4,7 @@ import { readTable, writeTable } from '../utils/db.js';
 import authMiddleware from '../middleware/authMiddleware.js';
 import { normalizeProduct, normalizeUser } from '../utils/imageHelper.js';
 import { upload } from '../middleware/uploadMiddleware.js';
-import { sendVerificationOTP } from '../utils/mailer.js';
+import { sendVerificationOTP, isMailerConfigured } from '../utils/mailer.js';
 import { uploadAvatarToCloudinary } from '../utils/cloudinary.js';
 
 const router = express.Router();
@@ -178,7 +178,7 @@ router.post('/send-verification-otp', async (req, res, next) => {
       });
     }
 
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    if (!isMailerConfigured()) {
       return res.status(503).json({
         message: 'Email service not configured. Please contact support.'
       });
