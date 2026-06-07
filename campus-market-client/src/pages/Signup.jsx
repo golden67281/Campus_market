@@ -16,7 +16,7 @@ const COLLEGES = [
   'IIT Roorkee', 'IIT Kharagpur', 'NIT Trichy', 'NIT Warangal', 'NIT Surathkal',
   'BITS Pilani', 'VIT Vellore', 'Manipal University', 'NMIMS Mumbai',
   'Pune University', 'Mumbai University', 'Delhi University', 'Gujarat University',
-  'Anna University', 'Osmania University', 'Amity University', 'SRM University',
+  'Anna University', 'Osmania University', 'Amity University', 'SRM University', 'Parul University', 
 ];
 
 const STEPS = ['Mobile', 'Details', 'College', 'Security & Password'];
