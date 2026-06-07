@@ -24,6 +24,16 @@ public class ServerApplication {
             System.out.println("⚠️ Could not load .env file: " + e.getMessage());
         }
 
+        // Print environment keys for debugging on Render
+        System.out.println("====== STARTUP ENVIRONMENT DIAGNOSTICS ======");
+        System.getenv().forEach((key, value) -> {
+            if (key.contains("MONGO") || key.contains("PORT") || key.contains("JWT") || key.contains("SMTP") || key.contains("GMAIL")) {
+                System.out.println("🔑 Env Key: " + key + " = " + (value != null && !value.trim().isEmpty() ? "[PRESENT (length: " + value.length() + ")]" : "[EMPTY]"));
+            }
+        });
+        System.out.println("=============================================");
+
         SpringApplication.run(ServerApplication.class, args);
     }
 }
+
