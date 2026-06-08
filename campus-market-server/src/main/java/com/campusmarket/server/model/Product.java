@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -19,6 +21,8 @@ import java.util.Map;
 public class Product {
 
     @Id
+    @JsonProperty("id")
+    @JsonAlias("_id")
     private String id; // maps to _id
 
     private String sellerId;
@@ -71,4 +75,9 @@ public class Product {
 
     @Transient
     private Map<String, Object> userContact;
+
+    @JsonProperty("_id")
+    public String getUnderscoreId() {
+        return id;
+    }
 }

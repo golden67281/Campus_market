@@ -48,10 +48,36 @@ public class ProductController {
             @RequestParam(value = "maxPrice", required = false) Double maxPrice,
             @RequestParam(value = "conditions", required = false) List<String> conditions,
             @RequestParam(value = "sort", required = false) String sort,
-            @RequestParam(value = "lat", required = false) Double lat,
-            @RequestParam(value = "lng", required = false) Double lng,
-            @RequestParam(value = "radius", required = false) Double radius,
+            @RequestParam(value = "lat", required = false) String latStr,
+            @RequestParam(value = "lng", required = false) String lngStr,
+            @RequestParam(value = "radius", required = false) String radiusStr,
             HttpServletRequest request) {
+
+        Double lat = null;
+        Double lng = null;
+        Double radius = null;
+
+        if (latStr != null && !latStr.trim().isEmpty() && !"null".equalsIgnoreCase(latStr) && !"undefined".equalsIgnoreCase(latStr)) {
+            try {
+                lat = Double.parseDouble(latStr);
+            } catch (NumberFormatException e) {
+                // ignore
+            }
+        }
+        if (lngStr != null && !lngStr.trim().isEmpty() && !"null".equalsIgnoreCase(lngStr) && !"undefined".equalsIgnoreCase(lngStr)) {
+            try {
+                lng = Double.parseDouble(lngStr);
+            } catch (NumberFormatException e) {
+                // ignore
+            }
+        }
+        if (radiusStr != null && !radiusStr.trim().isEmpty() && !"null".equalsIgnoreCase(radiusStr) && !"undefined".equalsIgnoreCase(radiusStr)) {
+            try {
+                radius = Double.parseDouble(radiusStr);
+            } catch (NumberFormatException e) {
+                // ignore
+            }
+        }
 
         Query query = new Query();
         query.addCriteria(Criteria.where("status").is("active"));
@@ -85,9 +111,12 @@ public class ProductController {
 
         // Distance filter (in-memory Haversine distance)
         if (lat != null && lng != null && radius != null) {
+            final Double targetLat = lat;
+            final Double targetLng = lng;
+            final Double targetRadius = radius;
             products = products.stream()
                     .filter(p -> p.getLat() != null && p.getLng() != null &&
-                            DistanceHelper.getDistanceKm(lat, lng, p.getLat(), p.getLng()) <= radius)
+                            DistanceHelper.getDistanceKm(targetLat, targetLng, p.getLat(), p.getLng()) <= targetRadius)
                     .collect(Collectors.toList());
         }
 

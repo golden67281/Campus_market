@@ -78,6 +78,7 @@ public class UserController {
 
         Map<String, Object> response = new HashMap<>();
         response.put("id", user.getId());
+        response.put("_id", user.getId());
         response.put("name", user.getName());
         response.put("username", user.getUsername());
         response.put("mobile", user.getMobile());
@@ -357,6 +358,7 @@ public class UserController {
 
         Map<String, Object> response = new HashMap<>();
         response.put("id", user.getId());
+        response.put("_id", user.getId());
         response.put("name", user.getName());
         response.put("username", user.getUsername());
         response.put("college", user.getCollege());

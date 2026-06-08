@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
@@ -17,6 +19,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class User {
 
     @Id
+    @JsonProperty("id")
+    @JsonAlias("_id")
     private String id; // maps to _id
 
     private String name;
@@ -64,4 +68,9 @@ public class User {
     private String status; // e.g. "active", "inactive"
 
     private String createdAt;
+
+    @JsonProperty("_id")
+    public String getUnderscoreId() {
+        return id;
+    }
 }
