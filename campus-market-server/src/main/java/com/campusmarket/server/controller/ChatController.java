@@ -42,7 +42,7 @@ public class ChatController {
         Map<String, List<Chat>> groups = new HashMap<>();
         for (Chat msg : allMessages) {
             String partnerId = msg.getSenderId().equals(currentUserId) ? msg.getReceiverId() : msg.getSenderId();
-            String key = msg.getProductId() + "_" + partnerId;
+            String key = msg.getProductId() + ":" + partnerId;
             groups.computeIfAbsent(key, k -> new ArrayList<>()).add(msg);
         }
 
@@ -59,7 +59,7 @@ public class ChatController {
                     .filter(m -> m.getReceiverId().equals(currentUserId) && !m.isRead())
                     .count();
 
-            String[] keys = entry.getKey().split("_");
+            String[] keys = entry.getKey().split(":");
             String productId = keys[0];
             String partnerId = keys[1];
 
