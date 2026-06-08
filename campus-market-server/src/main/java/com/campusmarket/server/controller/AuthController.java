@@ -474,13 +474,47 @@ public class AuthController {
     @Value("${spring.mail.username:}")
     private String debugMailUsername;
 
+    @Value("${spring.mail.password:}")
+    private String debugMailPassword;
+
+    @Value("${spring.mail.host:}")
+    private String debugMailHost;
+
+    @Value("${spring.mail.port:}")
+    private String debugMailPort;
+
     @Value("${app.mail.sender:campusmarket.app@gmail.com}")
     private String debugMailSenderAddress;
 
+    private String maskStringForDebug(String val) {
+        if (val == null) return "null";
+        if (val.trim().isEmpty()) return "empty";
+        int len = val.length();
+        if (len <= 4) return "**** (len: " + len + ")";
+        return val.substring(0, 2) + "****" + val.substring(len - 2) + " (len: " + len + ")";
+    }
+
     @GetMapping("/test-mail-debug")
     public ResponseEntity<?> testMailDebug(@RequestParam("to") String toEmail) {
+        Map<String, Object> diagnostics = new java.util.HashMap<>();
+        diagnostics.put("spring_mail_host", debugMailHost);
+        diagnostics.put("spring_mail_port", debugMailPort);
+        diagnostics.put("spring_mail_username", maskStringForDebug(debugMailUsername));
+        diagnostics.put("spring_mail_password", maskStringForDebug(debugMailPassword));
+        diagnostics.put("app_mail_sender", debugMailSenderAddress);
+        diagnostics.put("env_SMTP_HOST", System.getenv("SMTP_HOST"));
+        diagnostics.put("env_SMTP_PORT", System.getenv("SMTP_PORT"));
+        diagnostics.put("env_SMTP_USER", maskStringForDebug(System.getenv("SMTP_USER")));
+        diagnostics.put("env_SMTP_PASS", maskStringForDebug(System.getenv("SMTP_PASS")));
+        diagnostics.put("env_GMAIL_USER", maskStringForDebug(System.getenv("GMAIL_USER")));
+        diagnostics.put("env_GMAIL_APP_PASSWORD", maskStringForDebug(System.getenv("GMAIL_APP_PASSWORD")));
+
         if (debugMailSender == null) {
-            return ResponseEntity.ok(Map.of("status", "error", "message", "JavaMailSender is null"));
+            return ResponseEntity.ok(Map.of(
+                    "status", "error",
+                    "message", "JavaMailSender is null",
+                    "diagnostics", diagnostics
+            ));
         }
         try {
             jakarta.mail.internet.MimeMessage message = debugMailSender.createMimeMessage();
@@ -492,7 +526,11 @@ public class AuthController {
             helper.setText("If you see this, email sending is working!", false);
 
             debugMailSender.send(message);
-            return ResponseEntity.ok(Map.of("status", "success", "message", "Email sent successfully to " + toEmail));
+            return ResponseEntity.ok(Map.of(
+                    "status", "success",
+                    "message", "Email sent successfully to " + toEmail,
+                    "diagnostics", diagnostics
+            ));
         } catch (Exception ex) {
             java.io.StringWriter sw = new java.io.StringWriter();
             java.io.PrintWriter pw = new java.io.PrintWriter(sw);
@@ -502,7 +540,8 @@ public class AuthController {
                             "status", "error",
                             "message", ex.getMessage(),
                             "type", ex.getClass().getName(),
-                            "stackTrace", sw.toString()
+                            "stackTrace", sw.toString(),
+                            "diagnostics", diagnostics
                     ));
         }
     }
