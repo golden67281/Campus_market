@@ -11,6 +11,7 @@ import com.campusmarket.server.security.UserPrincipal;
 import com.campusmarket.server.service.CloudinaryService;
 import com.campusmarket.server.service.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -465,5 +466,44 @@ public class AuthController {
         response.put("userMap", userToIdMap);
 
         return ResponseEntity.ok(response);
+    }
+
+    @Autowired(required = false)
+    private org.springframework.mail.javamail.JavaMailSender debugMailSender;
+
+    @Value("${spring.mail.username:}")
+    private String debugMailUsername;
+
+    @Value("${app.mail.sender:campusmarket.app@gmail.com}")
+    private String debugMailSenderAddress;
+
+    @GetMapping("/test-mail-debug")
+    public ResponseEntity<?> testMailDebug(@RequestParam("to") String toEmail) {
+        if (debugMailSender == null) {
+            return ResponseEntity.ok(Map.of("status", "error", "message", "JavaMailSender is null"));
+        }
+        try {
+            jakarta.mail.internet.MimeMessage message = debugMailSender.createMimeMessage();
+            org.springframework.mail.javamail.MimeMessageHelper helper = new org.springframework.mail.javamail.MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(String.format("\"Campus Market Debug\" <%s>", debugMailSenderAddress));
+            helper.setTo(toEmail);
+            helper.setSubject("Campus Market SMTP Test");
+            helper.setText("If you see this, email sending is working!", false);
+
+            debugMailSender.send(message);
+            return ResponseEntity.ok(Map.of("status", "success", "message", "Email sent successfully to " + toEmail));
+        } catch (Exception ex) {
+            java.io.StringWriter sw = new java.io.StringWriter();
+            java.io.PrintWriter pw = new java.io.PrintWriter(sw);
+            ex.printStackTrace(pw);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "status", "error",
+                            "message", ex.getMessage(),
+                            "type", ex.getClass().getName(),
+                            "stackTrace", sw.toString()
+                    ));
+        }
     }
 }
