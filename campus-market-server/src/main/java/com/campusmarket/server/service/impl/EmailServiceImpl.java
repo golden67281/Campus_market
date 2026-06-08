@@ -67,6 +67,8 @@ public class EmailServiceImpl implements EmailService {
                 System.out.println("[Mailer] Brevo HTTP API response: " + response.getBody());
                 System.out.println("[Mailer] OTP email sent successfully via Brevo HTTP API to " + toEmail);
                 return;
+            } catch (org.springframework.web.client.HttpClientErrorException ex) {
+                System.err.println("[Mailer Error] Brevo HTTP API failed: " + ex.getMessage() + ". Response body: " + ex.getResponseBodyAsString() + ". Trying SMTP fallback...");
             } catch (Exception ex) {
                 System.err.println("[Mailer Error] Brevo HTTP API failed: " + ex.getMessage() + ". Trying SMTP fallback...");
             }

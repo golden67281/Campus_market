@@ -537,6 +537,20 @@ public class AuthController {
                         "apiResponse", response.getBody() != null ? response.getBody() : "empty response",
                         "diagnostics", diagnostics
                 ));
+            } catch (org.springframework.web.client.HttpClientErrorException ex) {
+                java.io.StringWriter sw = new java.io.StringWriter();
+                java.io.PrintWriter pw = new java.io.PrintWriter(sw);
+                ex.printStackTrace(pw);
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(Map.of(
+                                "status", "error",
+                                "mode", "Brevo HTTP API",
+                                "message", "Brevo HTTP API call failed: " + ex.getMessage(),
+                                "apiResponseBody", ex.getResponseBodyAsString(),
+                                "type", ex.getClass().getName(),
+                                "stackTrace", sw.toString(),
+                                "diagnostics", diagnostics
+                        ));
             } catch (Exception ex) {
                 java.io.StringWriter sw = new java.io.StringWriter();
                 java.io.PrintWriter pw = new java.io.PrintWriter(sw);
