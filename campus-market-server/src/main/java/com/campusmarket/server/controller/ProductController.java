@@ -85,10 +85,11 @@ public class ProductController {
         if (category != null && !category.trim().isEmpty()) {
             query.addCriteria(Criteria.where("category").regex("^" + category + "$", "i"));
         }
-        if (minPrice != null) {
+        if (minPrice != null && maxPrice != null) {
+            query.addCriteria(Criteria.where("price").gte(minPrice).lte(maxPrice));
+        } else if (minPrice != null) {
             query.addCriteria(Criteria.where("price").gte(minPrice));
-        }
-        if (maxPrice != null) {
+        } else if (maxPrice != null) {
             query.addCriteria(Criteria.where("price").lte(maxPrice));
         }
         if (conditions != null && !conditions.isEmpty()) {
@@ -121,6 +122,7 @@ public class ProductController {
         }
 
         List<Product> normalized = products.stream()
+                .map(this::populateSeller)
                 .map(p -> ImageHelper.normalizeProduct(p, request))
                 .collect(Collectors.toList());
 
@@ -146,6 +148,7 @@ public class ProductController {
         }
 
         List<Product> normalized = products.stream()
+                .map(this::populateSeller)
                 .map(p -> ImageHelper.normalizeProduct(p, request))
                 .collect(Collectors.toList());
 
@@ -163,6 +166,7 @@ public class ProductController {
         }
 
         Product product = prodOpt.get();
+        populateSeller(product);
 
         // Check if requester has expressed interest
         String authHeader = request.getHeader("Authorization");
@@ -388,5 +392,37 @@ public class ProductController {
             productRepository.save(product);
         }
         return ResponseEntity.ok().build();
+    }
+
+    private Product populateSeller(Product product) {
+        if (product != null && product.getSellerId() != null) {
+            Optional<User> sellerOpt = userRepository.findById(product.getSellerId());
+            if (sellerOpt.isPresent()) {
+                User seller = sellerOpt.get();
+                SellerInfo sellerInfo = SellerInfo.builder()
+                        .id(seller.getId())
+                        .name(seller.getName())
+                        .username(seller.getUsername())
+                        .mobile(seller.getMobile())
+                        .email(seller.getEmail())
+                        .collegeEmail(seller.getCollegeEmail())
+                        .collegeEmailVerified(seller.isCollegeEmailVerified())
+                        .college(seller.getCollege())
+                        .collegeCity(seller.getCollegeCity())
+                        .year(seller.getYear())
+                        .department(seller.getDepartment())
+                        .area(seller.getArea())
+                        .lat(seller.getLat())
+                        .lng(seller.getLng())
+                        .avatar(seller.getAvatar())
+                        .role(seller.getRole())
+                        .status(seller.getStatus())
+                        .createdAt(seller.getCreatedAt())
+                        .city(seller.getCollegeCity())
+                        .build();
+                product.setSeller(sellerInfo);
+            }
+        }
+        return product;
     }
 }

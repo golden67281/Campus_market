@@ -73,6 +73,7 @@ public class UserController {
 
         List<Product> recentListings = activeProducts.stream()
                 .sorted((p1, p2) -> p2.getCreatedAt().compareTo(p1.getCreatedAt()))
+                .map(this::populateSeller)
                 .map(p -> ImageHelper.normalizeProduct(p, request))
                 .collect(Collectors.toList());
 
@@ -311,6 +312,7 @@ public class UserController {
     public ResponseEntity<?> getMyListings(@AuthenticationPrincipal UserPrincipal userPrincipal, HttpServletRequest request) {
         List<Product> products = productRepository.findBySellerIdAndStatusNot(userPrincipal.getId(), "deleted");
         List<Product> normalized = products.stream()
+                .map(this::populateSeller)
                 .map(p -> ImageHelper.normalizeProduct(p, request))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(normalized);
@@ -321,6 +323,7 @@ public class UserController {
         List<Product> products = productRepository.findBySellerId(sellerId);
         List<Product> activeProducts = products.stream()
                 .filter(p -> "active".equalsIgnoreCase(p.getStatus()))
+                .map(this::populateSeller)
                 .map(p -> ImageHelper.normalizeProduct(p, request))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(activeProducts);
@@ -353,6 +356,7 @@ public class UserController {
 
         List<Product> recentListings = activeProducts.stream()
                 .sorted((p1, p2) -> p2.getCreatedAt().compareTo(p1.getCreatedAt()))
+                .map(this::populateSeller)
                 .map(p -> ImageHelper.normalizeProduct(p, request))
                 .collect(Collectors.toList());
 
@@ -421,5 +425,37 @@ public class UserController {
         }
 
         return ResponseEntity.ok(Map.of("message", String.format("Account successfully %s.", "delete".equalsIgnoreCase(action) ? "deleted" : "deactivated")));
+    }
+
+    private Product populateSeller(Product product) {
+        if (product != null && product.getSellerId() != null) {
+            Optional<User> sellerOpt = userRepository.findById(product.getSellerId());
+            if (sellerOpt.isPresent()) {
+                User seller = sellerOpt.get();
+                SellerInfo sellerInfo = SellerInfo.builder()
+                        .id(seller.getId())
+                        .name(seller.getName())
+                        .username(seller.getUsername())
+                        .mobile(seller.getMobile())
+                        .email(seller.getEmail())
+                        .collegeEmail(seller.getCollegeEmail())
+                        .collegeEmailVerified(seller.isCollegeEmailVerified())
+                        .college(seller.getCollege())
+                        .collegeCity(seller.getCollegeCity())
+                        .year(seller.getYear())
+                        .department(seller.getDepartment())
+                        .area(seller.getArea())
+                        .lat(seller.getLat())
+                        .lng(seller.getLng())
+                        .avatar(seller.getAvatar())
+                        .role(seller.getRole())
+                        .status(seller.getStatus())
+                        .createdAt(seller.getCreatedAt())
+                        .city(seller.getCollegeCity())
+                        .build();
+                product.setSeller(sellerInfo);
+            }
+        }
+        return product;
     }
 }
