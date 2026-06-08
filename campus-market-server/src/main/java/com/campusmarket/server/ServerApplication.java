@@ -35,16 +35,24 @@ public class ServerApplication {
 
         var context = SpringApplication.run(ServerApplication.class, args);
         try {
-            String resolvedUri = context.getEnvironment().getProperty("spring.data.mongodb.uri");
-            if (resolvedUri != null) {
-                // Safely mask the password between : and @ for security
-                String masked = resolvedUri.replaceAll("(?<=://[^:]+:)[^@]+(?=@)", "*****");
+            String resolvedUri4 = context.getEnvironment().getProperty("spring.mongodb.uri");
+            String resolvedUri3 = context.getEnvironment().getProperty("spring.data.mongodb.uri");
+            
+            if (resolvedUri4 != null) {
+                String masked = resolvedUri4.replaceAll("(?<=://[^:]+:)[^@]+(?=@)", "*****");
+                System.out.println("🍀 RESOLVED spring.mongodb.uri = " + masked);
+            } else {
+                System.out.println("🍀 RESOLVED spring.mongodb.uri = null");
+            }
+            
+            if (resolvedUri3 != null) {
+                String masked = resolvedUri3.replaceAll("(?<=://[^:]+:)[^@]+(?=@)", "*****");
                 System.out.println("🍀 RESOLVED spring.data.mongodb.uri = " + masked);
             } else {
                 System.out.println("🍀 RESOLVED spring.data.mongodb.uri = null");
             }
         } catch (Exception e) {
-            System.out.println("⚠️ Could not log resolved URI: " + e.getMessage());
+            System.out.println("⚠️ Could not log resolved URIs: " + e.getMessage());
         }
     }
 }
