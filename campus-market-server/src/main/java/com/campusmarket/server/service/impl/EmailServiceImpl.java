@@ -28,7 +28,9 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     public boolean isMailerConfigured() {
-        return mailSender != null && mailUsername != null && !mailUsername.trim().isEmpty() && mailPassword != null && !mailPassword.trim().isEmpty();
+        boolean smtpConfigured = mailSender != null && mailUsername != null && !mailUsername.trim().isEmpty() && mailPassword != null && !mailPassword.trim().isEmpty();
+        boolean apiConfigured = mailPassword != null && mailPassword.length() > 30 && mailSenderAddress != null && !mailSenderAddress.trim().isEmpty();
+        return smtpConfigured || apiConfigured;
     }
 
     @Async
@@ -37,6 +39,37 @@ public class EmailServiceImpl implements EmailService {
         if (!isMailerConfigured()) {
             System.err.println("[Mailer] Cannot send email: mail service is not configured.");
             return;
+        }
+
+        // If password looks like a Brevo API Key (> 30 chars), send via HTTP API to bypass port blocks on Render
+        if (mailPassword != null && mailPassword.length() > 30) {
+            try {
+                System.out.println("[Mailer] Detected API key (length " + mailPassword.length() + "). Sending email via Brevo HTTP API...");
+                org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
+                org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+                headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+                headers.setAccept(java.util.List.of(org.springframework.http.MediaType.APPLICATION_JSON));
+                headers.set("api-key", mailPassword);
+
+                java.util.Map<String, Object> senderMap = java.util.Map.of("name", "Campus Market", "email", mailSenderAddress);
+                java.util.Map<String, Object> toMap = java.util.Map.of("email", toEmail, "name", userName != null ? userName : "Student");
+                
+                java.util.Map<String, Object> body = java.util.Map.of(
+                    "sender", senderMap,
+                    "to", java.util.List.of(toMap),
+                    "subject", String.format("%s — Your Campus Market Verification Code", otp),
+                    "htmlContent", buildOtpHtml(otp, userName != null ? userName : "Student")
+                );
+
+                org.springframework.http.HttpEntity<java.util.Map<String, Object>> entity = new org.springframework.http.HttpEntity<>(body, headers);
+                org.springframework.http.ResponseEntity<String> response = restTemplate.postForEntity("https://api.brevo.com/v3/smtp/email", entity, String.class);
+                
+                System.out.println("[Mailer] Brevo HTTP API response: " + response.getBody());
+                System.out.println("[Mailer] OTP email sent successfully via Brevo HTTP API to " + toEmail);
+                return;
+            } catch (Exception ex) {
+                System.err.println("[Mailer Error] Brevo HTTP API failed: " + ex.getMessage() + ". Trying SMTP fallback...");
+            }
         }
 
         try {
@@ -49,9 +82,9 @@ public class EmailServiceImpl implements EmailService {
             helper.setText(buildOtpHtml(otp, userName != null ? userName : "Student"), true);
 
             mailSender.send(message);
-            System.out.println("[Mailer] OTP email sent successfully to " + toEmail);
+            System.out.println("[Mailer] OTP email sent successfully via SMTP to " + toEmail);
         } catch (Exception ex) {
-            System.err.println("[Mailer Error] Failed to send email to " + toEmail + ": " + ex.getMessage());
+            System.err.println("[Mailer Error] Failed to send email via SMTP to " + toEmail + ": " + ex.getMessage());
         }
     }
 

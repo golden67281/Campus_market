@@ -509,6 +509,50 @@ public class AuthController {
         diagnostics.put("env_GMAIL_USER", maskStringForDebug(System.getenv("GMAIL_USER")));
         diagnostics.put("env_GMAIL_APP_PASSWORD", maskStringForDebug(System.getenv("GMAIL_APP_PASSWORD")));
 
+        if (debugMailPassword != null && debugMailPassword.length() > 30) {
+            try {
+                org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
+                org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+                headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+                headers.setAccept(java.util.List.of(org.springframework.http.MediaType.APPLICATION_JSON));
+                headers.set("api-key", debugMailPassword);
+
+                java.util.Map<String, Object> senderMap = java.util.Map.of("name", "Campus Market Debug", "email", debugMailSenderAddress);
+                java.util.Map<String, Object> toMap = java.util.Map.of("email", toEmail, "name", "Student");
+                
+                java.util.Map<String, Object> body = java.util.Map.of(
+                    "sender", senderMap,
+                    "to", java.util.List.of(toMap),
+                    "subject", "Campus Market SMTP Test (HTTP API)",
+                    "htmlContent", "If you see this, email sending via Brevo HTTP API is working!"
+                );
+
+                org.springframework.http.HttpEntity<java.util.Map<String, Object>> entity = new org.springframework.http.HttpEntity<>(body, headers);
+                org.springframework.http.ResponseEntity<String> response = restTemplate.postForEntity("https://api.brevo.com/v3/smtp/email", entity, String.class);
+                
+                return ResponseEntity.ok(Map.of(
+                        "status", "success",
+                        "mode", "Brevo HTTP API",
+                        "message", "Email sent successfully via Brevo HTTP API to " + toEmail,
+                        "apiResponse", response.getBody() != null ? response.getBody() : "empty response",
+                        "diagnostics", diagnostics
+                ));
+            } catch (Exception ex) {
+                java.io.StringWriter sw = new java.io.StringWriter();
+                java.io.PrintWriter pw = new java.io.PrintWriter(sw);
+                ex.printStackTrace(pw);
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(Map.of(
+                                "status", "error",
+                                "mode", "Brevo HTTP API",
+                                "message", "Brevo HTTP API call failed: " + ex.getMessage(),
+                                "type", ex.getClass().getName(),
+                                "stackTrace", sw.toString(),
+                                "diagnostics", diagnostics
+                        ));
+            }
+        }
+
         if (debugMailSender == null) {
             return ResponseEntity.ok(Map.of(
                     "status", "error",
