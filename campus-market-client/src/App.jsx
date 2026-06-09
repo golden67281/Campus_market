@@ -18,6 +18,7 @@ const ProductDetail = lazy(() => import('./pages/ProductDetail'));
 const CreateListing = lazy(() => import('./pages/CreateListing'));
 const Profile       = lazy(() => import('./pages/Profile'));
 const EditProfile   = lazy(() => import('./pages/EditProfile'));
+const UserProfile   = lazy(() => import('./pages/UserProfile'));
 const MyListings    = lazy(() => import('./pages/MyListings'));
 const Wishlist      = lazy(() => import('./pages/Wishlist'));
 const Notifications = lazy(() => import('./pages/Notifications'));
@@ -72,6 +73,7 @@ export default function App() {
                 <Route path="/sell"              element={<CreateListing />} />
                 <Route path="/profile"           element={<Profile />} />
                 <Route path="/profile/edit"      element={<EditProfile />} />
+                <Route path="/profile/:userId"   element={<UserProfile />} />
                 <Route path="/my-listings"       element={<MyListings />} />
                 <Route path="/wishlist"          element={<Wishlist />} />
                 <Route path="/notifications"     element={<Notifications />} />

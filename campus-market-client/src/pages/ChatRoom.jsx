@@ -102,7 +102,7 @@ export default function ChatRoom() {
         </Link>
 
         {/* Partner Info */}
-        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+        <Link to={`/profile/${partner._id}`} className="flex items-center gap-2.5 flex-1 min-w-0 hover:opacity-85 transition cursor-pointer">
           <div className="w-10 h-10 rounded-full bg-indigo-50 border border-gray-100 flex items-center justify-center font-bold text-indigo-700 text-xs overflow-hidden shrink-0">
             {partner.avatar ? <img src={partner.avatar} alt="" className="w-full h-full object-cover" /> : initials(partner.name || 'U')}
           </div>
@@ -110,7 +110,7 @@ export default function ChatRoom() {
             <h2 className="font-semibold text-gray-900 text-sm truncate leading-tight">{partner.name}</h2>
             <p className="text-[10px] text-gray-400 leading-tight">@{partner.username}</p>
           </div>
-        </div>
+        </Link>
 
         {/* Product Reference */}
         {product && (

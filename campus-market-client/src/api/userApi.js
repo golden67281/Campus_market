@@ -8,6 +8,7 @@ export const sendVerificationOTP = (email) => api.post('/users/send-verification
 export const verifyCollegeOTP = (otp) => api.post('/users/verify-college-otp', { otp });
 export const getMyListings = () => api.get('/users/me/listings');
 export const getUserListings = (userId) => api.get(`/users/${userId}/listings`);
+export const getUserProfile = (userId) => api.get(`/users/${userId}`);
 export const deactivateAccount = () => api.delete('/users/me?action=deactivate');
 export const deleteAccount = () => api.delete('/users/me?action=delete');
 export const reportListing = (listingId, data) => api.post(`/reports/listing/${listingId}`, data);
