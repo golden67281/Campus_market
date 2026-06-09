@@ -50,7 +50,6 @@ export default function SplashIntro({ onComplete }) {
     const caretTimer = setTimeout(() => setShowCaret(false), 400);
     const fadeTimer = setTimeout(() => setFadingOut(true), 700);
     const doneTimer = setTimeout(() => {
-      sessionStorage.setItem('hasSeenSplash', 'true');
       onComplete();
     }, 1300);
 

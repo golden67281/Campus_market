@@ -38,9 +38,8 @@ function PageLoader() {
 }
 
 export default function App() {
-  const [showSplash, setShowSplash] = useState(() => {
-    return !sessionStorage.getItem('hasSeenSplash');
-  });
+  // Play starting animation on every fresh application mount/refresh
+  const [showSplash, setShowSplash] = useState(true);
 
   return (
     <BrowserRouter>
